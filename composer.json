@@ -1,0 +1,30 @@
+{
+    "name": "garrettw/pierce",
+    "description": "PIeRCe is an IRC bot framework written for PHP 5.4+.",
+    "type": "library",
+    "keywords": ["irc", "bot"],
+    "homepage": "http://github.com/garrettw/pierce",
+    "license": "LGPL v2.1",
+    "authors": [
+        {
+            "name": "Garrett Whitehorn",
+            "homepage": "http://garrettw.net/",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "garrettw/Dice": "1.3.1",
+        "DavidRockin/Podiya": "2.0.*",
+        "monolog/monolog": "1.10.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Pierce\\": "src/",
+            "": "vendor/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": { "Pierce\\Tests\\": "tests/" }
+    }
+}
