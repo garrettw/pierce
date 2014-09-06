@@ -37,7 +37,7 @@ class MyBot implements Listener
     
     public function connected(Event $e)
     {
-        $this->events[] = $this->eventmgr->subscribe('+30000', [$this, 'sampleTimedEvent']);
+        $this->events[] = $this->eventmgr->subscribe('timer:30000', [$this, 'sampleTimedEvent']);
     }
     
     public function sampleTimedEvent(Event $e)
