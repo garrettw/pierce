@@ -2,7 +2,7 @@
     "name": "garrettw/pierce",
     "description": "PIeRCe is an IRC bot framework written for PHP 5.4+.",
     "type": "library",
-    "keywords": ["irc", "bot"],
+    "keywords": ["irc", "bot", "framework"],
     "homepage": "http://github.com/garrettw/pierce",
     "license": "LGPL v2.1",
     "authors": [
