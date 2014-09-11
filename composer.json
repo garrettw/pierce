@@ -18,6 +18,10 @@
         "DavidRockin/Podiya": "2.0.*",
         "monolog/monolog": "1.10.*"
     },
+    "require-dev": {
+        "phpspec/phpspec": "2.0.*",
+        "phpdocumentor/phpdocumentor": "2.7.*"
+    },
     "autoload": {
         "psr-4": {
             "Pierce\\": "src/",
