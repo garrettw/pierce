@@ -2,8 +2,7 @@
 namespace Pierce;
 use DavidRockin\Podiya\Podiya,
     DavidRockin\Podiya\Listener,
-    DavidRockin\Podiya\Event,
-    Monolog\Logger;
+    DavidRockin\Podiya\Event;
 
 class StdEvents extends Listener
 {
