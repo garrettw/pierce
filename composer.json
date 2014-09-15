@@ -4,7 +4,7 @@
     "type": "library",
     "keywords": ["irc", "bot", "framework"],
     "homepage": "http://github.com/garrettw/pierce",
-    "license": "LGPL v2.1",
+    "license": "LGPL-2.1",
     "authors": [
         {
             "name": "Garrett Whitehorn",
