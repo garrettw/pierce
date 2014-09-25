@@ -1,20 +1,20 @@
 <?php
 
 namespace Pierce\Exception;
-use DavidRockin\Podiya\Podiya,
-    DavidRockin\Podiya\Event;
+use Noair\Noair,
+    Noair\Event;
 
 class Exception extends \Exception
 {
-    public function __construct(Podiya $podiya, $message = null, $code = 0,
+    public function __construct(Noair $noair, $message = null, $code = 0,
                                 Exception $previous = null)
     {
         // mainly for the purpose of logging
-        $podiya->publish(new Event('exception',
-            [$code => $message, 'previous' => $previous], $this, $podiya));
+        $noair->publish(new Event('exception',
+            [$code => $message, 'previous' => $previous], $this));
         parent::__construct($message, $code, $previous);
     }
-    
+
     public function __toString()
     {
         return __CLASS__ . " [{$this->code}]: {$this->message} ("

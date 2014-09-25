@@ -1,38 +1,38 @@
 <?php
 namespace Pierce;
-use DavidRockin\Podiya\Podiya,
-    DavidRockin\Podiya\Listener,
-    DavidRockin\Podiya\Event;
+use Noair\Noair,
+    Noair\Listener,
+    Noair\Event;
 
 class StdEvents extends Listener
 {
-    private $client;
-    
-    public function __construct(Podiya $podiya, Client $client)
+    public function __construct(Client $client)
     {
-        $this->client = $client;
-        
-        $interval = $this->client->rxtimeout * 125;
-        $this->events = [
-            ["timer:$interval", [$this, 'pingCheck']],
+        $this->defaultPriority = Noair::PRIORITY_HIGHEST;
+        $this->handlers = [
+            ['timer:' . ($client->rxtimeout * 125), [$this, 'pingCheck']],
         ];
-        parent::__construct($podiya);
     }
-    
+    public function onReceived(Event $e)
+    {
+        $msg = $e->data;
+    }
+
     public function pingCheck(Event $e)
     {
         $time = time();
-        $caller = $e->getCaller();
-        
-        if ($time - $caller->_lastrx > $caller->_rxtimeout) {
+        $caller = $e->caller;
+
+        if ($time - $caller->_lastrx > $caller->_rxtimeout):
             $caller->reconnect();
             $caller->_lastrx = $time;
-        } elseif ($time - $caller->_lastrx > $caller->_rxtimeout/2) {
-            $this->podiya->publish(new Event('send', [
+        elseif ($time - $caller->_lastrx > $caller->_rxtimeout/2):
+            $this->noair->publish(new Event('send', [
                 'connection' => $caller->name,
                 'message' => 'PING '.$caller->address,
                 'priority' => SMARTIRC_CRITICAL,
             ], $this));
-        }
+        endif;
     }
+
 }
