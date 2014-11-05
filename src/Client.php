@@ -1,13 +1,13 @@
 <?php
 
 namespace Pierce;
-use Pierce\Connection\Connection,
-    Noair\Listener,
-    Noair\Event;
+use Noair\Event;
 
-class Client extends Listener
+class Client extends Noair\Listener
 {
+    private $dice;
     private $connections = [];
+    private $bots = [];
     private $interrupt   = false;
     private $pollrate    = 10; // in Hz
 
@@ -15,8 +15,10 @@ class Client extends Listener
     private $username;
     private $realname;
 
-    public function __construct($set = [])
+    public function __construct(Dice\Dice $dice, $set = [])
     {
+        $this->dice = $dice;
+
         foreach ($set as $prop => $val):
             if ($name == 'nick' || $name == 'username'):
                 $this->$name = str_replace(' ', '', $val);
@@ -37,18 +39,21 @@ class Client extends Listener
             && $this->$name
             && $this->$name != $val
         ):
-            // send change to servers
-        endif;
+            if ($name != 'realname'):
+                $this->$name = str_replace(' ', '', $val);
+            endif;
 
-        if ($name == 'nick' || $name == 'username'):
-            $this->$name = str_replace(' ', '', $val);
+            // send change to servers
+
         elseif ($name != 'connections'):
             $this->$name = $val;
         endif;
     }
 
-    public function addConnection(Connection $conn)
+    public function addConnection(array $conndata, $connectnow = false)
     {
+        $conn = $this->dice->create('Pierce\\Connection', [$conndata]);
+
         // install default values if they're not already set
         foreach (['nick', 'username', 'realname'] as $prop):
             if ($conn->$prop == '' && isset($this->$prop)):
@@ -57,6 +62,36 @@ class Client extends Listener
         endforeach;
 
         $this->connections[$conn->name] = $conn;
+
+        if ($connectnow):
+            $this->noair->publish(new Event('connect', $conn->name, $this));
+        endif;
+
+        return $this;
+    }
+
+    public function addBots($bots)
+    {
+        if (!is_array($bots)):
+            $bots = [$bots];
+        endif;
+
+        foreach ($bots as $bot):
+            $this->bots[] = $this->dice->create($bot);
+        endforeach;
+
+        return $this;
+    }
+
+    public function connectAll()
+    {
+        foreach ($this->connections as $conn):
+            if (!$conn->connected):
+                $this->noair->publish(new Event('connect', $conn->name, $this));
+            endif;
+        endforeach;
+
+        return $this;
     }
 
     public function listen()
@@ -65,6 +100,8 @@ class Client extends Listener
             $this->listenOnce();
             usleep((int) ((1 / $this->pollrate) * 1000000));
         endwhile;
+
+        return $this;
     }
 
     public function listenOnce($name = null)
@@ -78,7 +115,7 @@ class Client extends Listener
 
     public function onDisconnected(Event $e)
     {
-        unset($this->connections[$e->data]);
+        unset($this->connections[$e->caller->name]);
     }
 
     public function onInterrupt()

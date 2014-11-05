@@ -1,6 +1,6 @@
 <?php
 
-namespace Pierce\Exception;
+namespace Pierce;
 use Noair\Noair,
     Noair\Event;
 

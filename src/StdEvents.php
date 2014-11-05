@@ -34,5 +34,4 @@ class StdEvents extends Listener
             ], $this));
         endif;
     }
-
 }

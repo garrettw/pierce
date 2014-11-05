@@ -1,12 +1,20 @@
 <?php
 // This file contains the basic code necessary to use PIeRCe.
 
+/* BEGIN boilerplate code required for every PIeRCe usage. */
 require 'vendor/autoload.php';
-use Noair\Noair,
-    Noair\Listener,
-    Noair\Event;
+$dice = new \Dice\Dice(true);
+$dice->addRule('Noair\\Noair', new \Dice\Rule(['shared' => true]));
+$dice->addRule('Noair\\Listener',
+    new \Dice\Rule([
+        'call' => [['subscribe', [$dice->create('Noair\\Noair')]]]
+    ]));
+$dice->addRule('Pierce\\Client', new \Dice\Rule(['shared' => true]));
+/* END boilerplate */
 
-class MyBot extends Listener
+/* BEGIN custom bot code */
+use Noair\Event;
+class MyBot extends Noair\Listener
 {
     public function __construct()
     {
@@ -39,40 +47,38 @@ class MyBot extends Listener
         ], $this));
     }
 }
+/* END custom bot code */
 
-$dic = new \Dice\Dice();
-$dic->addRule('Noair\\Noair', new \Dice\Rule(['shared' => true]));
-$dic->addRule('Pierce\\Client', new \Dice\Rule(['shared' => true]));
+/* BEGIN customizable execution code */
 
-// $client and $bots all connect automatically through the same Noair instance
-// because the Noair instance is marked to be shared within the same Dice.
 // Pierce\Logger encapsulates Monolog\Logger and logs all events to it.
 // Pierce\StdEvents is the primary bot needed to translate raw data into IRC
 // events and vice-versa. Any custom bots will likely want to subscribe to these
 // events rather than the raw data events coming from the connections.
-$noair = $dic->create('Noair\\Noair');
-$client = $dic->create('Pierce\\Client', [[
-    'username' => 'pierce',
-    'realname' => 'PIeRCe IRC bot',
-]])->subscribe($noair);
 
-$bots = [
-    $dic->create('Pierce\\Logger')->subscribe($noair),
-    $dic->create('Pierce\\StdEvents')->subscribe($noair),
-    $dic->create('MyBot')->subscribe($noair),
-];
+$dice
+    ->create('Pierce\\Client', [[
+        'username' => 'pierce',
+        'realname' => 'PIeRCe IRC bot',
+    ]])
+    ->addConnection([
+        'name' => 'freenode',
+        'servers' => [
+            'chat.freenode.net:6667',
+        ],
+        // 'bindto' => '0.0.0.0:0',
+        'nick' => 'PIeRCe',
+        // 'password' => 'none',
+        // 'usermode' => 0,
+        'channels' => ['#pierce-test'],
+    ])
+    ->addBots([
+        'Pierce\\Logger',
+        'Pierce\\StdEvents',
+        'MyBot',
+    ])
+    ->connectAll()
+    ->listen()
+    ->unsubscribe();
 
-$client->addConnection($dic->create('Pierce\\Connection\\Connection', [[
-    'name' => 'freenode',
-    'servers' => [
-        'irc.freenode.net' => '6667',
-    ],
-    // 'bindto' => '0.0.0.0:0',
-    'nick' => 'PIeRCe',
-    // 'password' => 'none',
-    // 'usermode' => 0,
-    'channels' => ['#pierce-test'],
-]])->subscribe($noair)->connect());
-
-$client->listen();
-$client->unsubscribe();
+// and that's it!

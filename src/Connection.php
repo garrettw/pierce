@@ -1,10 +1,9 @@
 <?php
 
-namespace Pierce\Connection;
-use Pierce\Exception as PException,
-    Noair\Noair,
-    Noair\Listener,
-    Noair\Event;
+namespace Pierce;
+use Noair\Listener,
+    Noair\Event,
+    Pierce\Event as PEvent;
 
 class Connection extends Listener
 {
@@ -32,7 +31,7 @@ class Connection extends Listener
     private $lasttx    = 0;
     private $lasttxmsg = 0;
 
-    public function __construct($set = [])
+    public function __construct(array $set = [])
     {
         foreach ($set as $prop => $val):
             if ($name == 'nick' || $name == 'username'):
@@ -54,13 +53,14 @@ class Connection extends Listener
 
     public function __set($name, $val)
     {
+        if (in_array($name, ['name', 'connected', 'loggedin', 'lastrx', 'lasttx'])):
+            return;
+        endif;
+
         if ($this->connected && in_array($name, ['nick', 'username', 'realname'])
             && $this->$name != $val
         ):
             // send change to server
-
-        elseif (in_array($name, ['name', 'connected', 'loggedin', 'lastrx', 'lasttx'])):
-            return;
         endif;
 
         if ($name == 'nick' || $name == 'username'):
@@ -70,8 +70,12 @@ class Connection extends Listener
         endif;
     }
 
-    public function connect()
+    public function onConnect(Event $e)
     {
+        if ($e->data != $this->name):
+            return;
+        endif;
+
         if ($this->connected || !$this->subscribed):
             return $this;
         endif;
@@ -79,17 +83,16 @@ class Connection extends Listener
         $timeout = ini_get("default_socket_timeout");
         $context = stream_context_create(['socket' => ['bindto' => $this->bindto]]);
 
-        foreach ($this->servers as $host => $port):
+        foreach ($this->servers as $address):
             if ($this->sock =
-                stream_socket_client("tcp://{$host}:{$port}",
-                    $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context)
+                stream_socket_client($address, $errno, $errstr, $timeout,
+                    STREAM_CLIENT_CONNECT, $context)
             ):
                 if (!stream_set_blocking($this->sock, 0)):
-                    throw new PException($this->noair, 'Unable to unblock stream');
+                    throw new Exception($this->noair, 'Unable to unblock stream');
                 endif;
 
-                $this->connected = true;
-                $this->remoteaddr = "{$host}:{$port}";
+                $this->remoteaddr = $address;
                 $this->lastrx = $this->lasttx = self::currentTimeMillis();
 
                 if ($this->password):
@@ -113,27 +116,24 @@ class Connection extends Listener
                     $this->noair->publish(new Event('join', $this->channels, $this));
                 endif;
 
-                break;
-            else:
-                $faildata = [$this->name, $errno, $errstr];
-                $this->noair->publish(new Event('connectFailed', $faildata, $this));
+                $this->connected = true;
+                $this->noair->publish(new Event('connected', $this->name, $this));
+                return $this;
             endif;
+
+            $faildata = [$this->name, $errno, $errstr];
+            $this->noair->publish(new Event('connectFailed', $faildata, $this));
         endforeach;
 
-        if ($this->connected):
-            $this->noair->publish(new Event('connected', $this->name, $this));
+        if ($this->autoretry && $this->autoretrycount < $this->autoretrymax):
+            $this->autoretrycount++;
+            return $this->connect();
         else:
-            if ($this->autoretry && $this->autoretrycount < $this->autoretrymax):
-                 $this->autoretrycount++;
-                 $this->connect();
-            else:
-                $this->autoretrycount = 0;
-                throw new PException($this->noair,
-                    "Unable to connect to any server for connection '{$this->name}'");
-            endif;
+            $this->autoretrycount = 0;
+            $this->onDisconnect();
+            throw new Exception($this->noair,
+                "Unable to connect to any server for connection '{$this->name}'");
         endif;
-
-        return $this;
     }
 
     public function listenOnce()
@@ -160,8 +160,7 @@ class Connection extends Listener
 
     private function send($msg, $priority = Message::NORMAL)
     {
-        $this->noair->publish(new Event('send', [
-            'connection' => $this->name,
+        $this->noair->publish(new PEvent\RawSendEvent([
             'message' => $msg,
             'priority' => $priority,
         ], $this));
@@ -169,30 +168,36 @@ class Connection extends Listener
 
     public function onDisconnect(Event $e = null)
     {
-        if ($this->connected && !isset($e) || $e->data == $this->name):
-            $this->noair->publish(new Event('disconnected', $this->name, $this));
-            $this->connected = false;
-            return $this->unsubscribe();
+        if (isset($e) && $e->data != $this->name):
+            return;
         endif;
+
+        $this->noair->publish(new Event('disconnected', $this->name, $this));
+        $this->connected = false;
+        return $this->unsubscribe();
     }
 
-    public function onReconnect(Event $e = null)
+    public function onReconnect(Event $e)
     {
-        if (!isset($e) || $e->data == $this->name):
-            $this->connected = false;
-            // reset stream/socket stuff
-            return $this->connect();
+        if ($e->data != $this->name):
+            return;
         endif;
+
+        $this->connected = false;
+        // reset stream/socket stuff
+        return $this->connect();
     }
 
     public function onSend(Event $e)
     {
-        if ($e->data['connection'] == $this->name):
-            //queue message
-            if (!empty($e->data['expectResponse'])):
-                $wait = $e->caller->rxtimeout;
-                $this->noair->subscribe("timer:$wait", [$this, 'rxtimeout']);
-            endif;
+        if ($e->data['connection'] != $this->name):
+            return;
+        endif;
+
+        //queue message
+        if (!empty($e->data['expectResponse'])):
+            $wait = $e->caller->rxtimeout;
+            $this->noair->subscribe("timer:$wait", [$this, 'rxtimeout']);
         endif;
     }
 
