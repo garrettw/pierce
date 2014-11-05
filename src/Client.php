@@ -5,7 +5,6 @@ use Noair\Event;
 
 class Client extends Noair\Listener
 {
-    private $dice;
     private $connections = [];
     private $bots = [];
     private $interrupt   = false;
@@ -15,10 +14,8 @@ class Client extends Noair\Listener
     private $username;
     private $realname;
 
-    public function __construct(Dice\Dice $dice, $set = [])
+    public function __construct($set = [])
     {
-        $this->dice = $dice;
-
         foreach ($set as $prop => $val):
             if ($name == 'nick' || $name == 'username'):
                 $this->$name = str_replace(' ', '', $val);
@@ -50,10 +47,8 @@ class Client extends Noair\Listener
         endif;
     }
 
-    public function addConnection(array $conndata, $connectnow = false)
+    public function addConnection(Connection $conn, $connectnow = false)
     {
-        $conn = $this->dice->create('Pierce\\Connection', [$conndata]);
-
         // install default values if they're not already set
         foreach (['nick', 'username', 'realname'] as $prop):
             if ($conn->$prop == '' && isset($this->$prop)):
@@ -72,14 +67,7 @@ class Client extends Noair\Listener
 
     public function addBots($bots)
     {
-        if (!is_array($bots)):
-            $bots = [$bots];
-        endif;
-
-        foreach ($bots as $bot):
-            $this->bots[] = $this->dice->create($bot);
-        endforeach;
-
+        $this->bots = (array) $bots;
         return $this;
     }
 

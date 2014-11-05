@@ -61,7 +61,7 @@ $dice
         'username' => 'pierce',
         'realname' => 'PIeRCe IRC bot',
     ]])
-    ->addConnection([
+    ->addConnection($dice->create('Pierce\\Connection', [[
         'name' => 'freenode',
         'servers' => [
             'chat.freenode.net:6667',
@@ -71,11 +71,11 @@ $dice
         // 'password' => 'none',
         // 'usermode' => 0,
         'channels' => ['#pierce-test'],
-    ])
+    ]]))
     ->addBots([
-        'Pierce\\Logger',
-        'Pierce\\StdEvents',
-        'MyBot',
+        $dice->create('Pierce\\Logger'),
+        $dice->create('Pierce\\StdEvents'),
+        $dice->create('MyBot'),
     ])
     ->connectAll()
     ->listen()
