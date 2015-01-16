@@ -3,7 +3,8 @@
 namespace Pierce;
 use Noair\Listener,
     Noair\Event,
-    Pierce\Event as PEvent;
+    Pierce\Event as PEvent,
+    Pierce\Connection\Message;
 
 class Connection extends Listener
 {
@@ -30,6 +31,9 @@ class Connection extends Listener
     private $lastrx    = 0;
     private $lasttx    = 0;
     private $lasttxmsg = 0;
+    private $messagequeue;
+    private $sendrate  = 4; // in Hz -- should be <= Client::$pollrate
+    private $rxtimeout = 300;
 
     public function __construct(array $set = [])
     {
@@ -44,6 +48,10 @@ class Connection extends Listener
         if (!$this->username):
             $this->username = str_replace(' ', '', exec('whoami'));
         endif;
+
+        $this->messagequeue = [
+            Message::HIGH => [], Message::NORMAL => [], Message::LOW => [],
+        ];
     }
 
     public function __get($name)
@@ -53,20 +61,33 @@ class Connection extends Listener
 
     public function __set($name, $val)
     {
-        if (in_array($name, ['name', 'connected', 'loggedin', 'lastrx', 'lasttx'])):
-            return;
-        endif;
+        switch ($name):
+            case 'nick':
+            case 'username':
+                $val = str_replace(' ', '', $val);
+            case 'realname':
+                if ($this->connected && $this->$name != $val):
+                    $this->noair->publish(new Event('connectionPropertyChange',
+                        [$name, $val], $this));
+                    $this->$name = $val;
+                endif;
+            case 'name':
+            case 'connected':
+            case 'loggedin':
+            case 'lastrx':
+            case 'lasttx':
+                break;
 
-        if ($this->connected && in_array($name, ['nick', 'username', 'realname'])
-            && $this->$name != $val
-        ):
-            // send change to server
-        endif;
+            default:
+                $this->$name = $val;
+        endswitch;
+    }
 
-        if ($name == 'nick' || $name == 'username'):
-            $this->$name = str_replace(' ', '', $val);
-        else:
-            $this->$name = $val;
+    public function onClientPropertyChange(Event $e)
+    {
+        $prop = $e->data[0];
+        if ($this->$prop == $e->caller->$prop):
+            $this->__set($prop, $e->data[1]);
         endif;
     }
 
@@ -93,23 +114,23 @@ class Connection extends Listener
                 endif;
 
                 $this->remoteaddr = $address;
-                $this->lastrx = $this->lasttx = self::currentTimeMillis();
+                $this->lastrx = self::currentTimeMillis();
 
                 if ($this->password):
-                    $this->send('PASS ' . $this->password, Message::URGENT);
+                    $this->rawSend('PASS ' . $this->password, Message::URGENT);
                 endif;
 
-                $this->send('NICK ' . $this->nick, Message::URGENT);
+                $this->rawSend('NICK ' . $this->nick, Message::URGENT);
 
                 if (!is_numeric($this->usermode)):
                     $this->usermode = 0;
                 endif;
 
-                $this->send("USER {$this->username} {$this->usermode} * :{$this->realname}",
+                $this->rawSend("USER {$this->username} {$this->usermode} * :{$this->realname}",
                             Message::URGENT);
 
                 foreach($this->perform as $cmd):
-                    $this->send($cmd, Message::HIGH);
+                    $this->rawSend($cmd, Message::HIGH);
                 endforeach;
 
                 if ($this->channels):
@@ -138,32 +159,69 @@ class Connection extends Listener
 
     public function listenOnce()
     {
-        /* check state */
-
-        if ($this->loggedin):
-            $this->noair->publish(new Event('timer', null, $this));
+        if (!$this->updateState()):
+            return false;
         endif;
 
+        $this->noair->publish(new Event('timer', null, $this));
+
         /* send queued messages */
+        if (self::currentTimeMillis()
+            >= $this->lasttx + (int) ((1 / $this->sendrate) * 1000)
+        ):
+            if (count($this->messagequeue[Message::HIGH])):
+                $this->rawSend(array_shift($this->messagequeue[Message::HIGH]), Message::HIGH);
+            elseif (count($this->messagequeue[Message::NORMAL])):
+                $this->rawSend(array_shift($this->messagequeue[Message::NORMAL]));
+            elseif (count($this->messagequeue[Message::LOW])):
+                $this->rawSend(array_shift($this->messagequeue[Message::LOW]), Message::LOW);
+            endif;
+        endif;
 
-        /* read data from stream/socket */
+        // check the socket to see if data is waiting for us
+        // this will trigger a warning when a signal is received
+        $result = stream_select($r = array($this->sock), $w = null, $e = null, 0);
+        $rawdata = null;
 
-        /* if read failed, socket is broken, reconnect */
+        if (!empty($result)) {
+            // the socket has data to read, so read and block until we get an EOL
+            $rawdata = '';
+            do {
+                if ($get = fgets($this->sock)):
+                    $rawdata .= $get;
+                endif;
+            } while ($rawdata{strlen($rawdata) - 1} != "\n");
+
+        } else if ($result === false) {
+            // panic! something went wrong! maybe received a signal.
+            // not sure what to do here yet.
+        }
+        // no data on the socket
 
         /* if no data, check for timeout */
+        $time = self::currentTimeMillis();
+        if (empty($rawdata) && $this->lastrx + ):
+
 
         // if received data, hand each msg off to StdEvents
         $this->noair->publish(new Event('received', new Message($msg), $this));
-
-        /* if connection is broken, log and fix */
     }
 
-    private function send($msg, $priority = Message::NORMAL)
+    private function rawSend($msg, $priority = Message::NORMAL)
     {
         $this->noair->publish(new PEvent\RawSendEvent([
             'message' => $msg,
             'priority' => $priority,
         ], $this));
+    }
+
+    public function onConnectionError(Event $e)
+    {
+        if ($e->data != $this->name):
+            return;
+        endif;
+
+        return $this->noair->publish(new Event('reconnect', $this->name, $this));
     }
 
     public function onDisconnect(Event $e = null)
@@ -188,24 +246,55 @@ class Connection extends Listener
         return $this->connect();
     }
 
-    public function onSend(Event $e)
+    public function onRawSend(PEvent\RawSendEvent $rse)
     {
-        if ($e->data['connection'] != $this->name):
+        if ($rse->data['connection'] != $this->name):
             return;
         endif;
 
-        //queue message
-        if (!empty($e->data['expectResponse'])):
-            $wait = $e->caller->rxtimeout;
-            $this->noair->subscribe("timer:$wait", [$this, 'rxtimeout']);
+        if ($rse->data['priority'] == Message::URGENT):
+            $this->sendNow($rse->data['message']);
+        else:
+            $this->messagequeue[$rse->data['priority']][] = $rse->data['message'];
+        endif;
+
+        if (!empty($rse->data['expectResponse'])):
+            $wait = $rse->caller->rxtimeout;
+            $this->noair->subscribe("timer:$wait", [$this, 'onRxTimeout']);
+            // TODO: this needs to be saved for unsubscribing
         endif;
     }
 
-    public function rxtimeout(Event $e)
+    private function sendNow($message)
     {
-        if ($e->data['connection'] == $this->name):
-
+        if (!$this->updateState()):
+            return false;
         endif;
+
+        if (($result = fwrite($this->sock, $message . "\r\n")) !== false):
+            $this->noair->publish(new Event('sent', $message, $this));
+            $this->lasttx = self::currentTimeMillis();
+            return true;
+        endif;
+
+        $this->noair->publish(new Event('connectionError', $this->name, $this));
+        return false;
+    }
+
+    public function onRxTimeout(Event $e)
+    {
+        $this->noair->publish(new Event('connectionError', $this->name, $this));
+    }
+
+    private function updateState()
+    {
+        if ($this->sock !== false && is_resource($this->sock)
+            && strtolower(get_resource_type($this->sock)) == 'stream'
+        ):
+            return ($this->connected = true);
+        endif;
+
+        return ($this->connected = false);
     }
 
     /**
@@ -217,7 +306,7 @@ class Connection extends Listener
      * @since   1.0
      * @version 1.0
      */
-    final protected static function currentTimeMillis()
+    final public static function currentTimeMillis()
     {
         // microtime(true) returns a float where there's 4 digits after the
         // decimal and if you add 00 on the end, those 6 digits are microseconds.

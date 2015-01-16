@@ -56,27 +56,24 @@ class MyBot extends Noair\Listener
 // events and vice-versa. Any custom bots will likely want to subscribe to these
 // events rather than the raw data events coming from the connections.
 
-$dice
-    ->create('Pierce\\Client', [[
-        'username' => 'pierce',
+$client =
+    $dice->create('Pierce\\Client', [[
         'realname' => 'PIeRCe IRC bot',
+        // 'username' => 'pierce',
     ]])
     ->addConnection($dice->create('Pierce\\Connection', [[
-        'name' => 'freenode',
-        'servers' => [
+        'name'        => 'freenode',
+        'servers'     => [
             'chat.freenode.net:6667',
         ],
-        // 'bindto' => '0.0.0.0:0',
-        'nick' => 'PIeRCe',
-        // 'password' => 'none',
-        // 'usermode' => 0,
-        'channels' => ['#pierce-test'],
+        'nick'        => 'PIeRCe',
+        'channels'    => ['#pierce-test'],
+        // 'bindto'      => '0.0.0.0:0',
+        // 'password'    => 'none',
+        // 'usermode'    => 0,
     ]]))
-    ->addBots([
-        $dice->create('Pierce\\Logger'),
-        $dice->create('Pierce\\StdEvents'),
-        $dice->create('MyBot'),
-    ])
+    ->addBot([$dice->create('Pierce\\Logger'), $dice->create('Pierce\\StdEvents')])
+    ->addBot($dice->create('MyBot'))
     ->connectAll()
     ->listen()
     ->unsubscribe();

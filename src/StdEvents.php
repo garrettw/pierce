@@ -2,7 +2,8 @@
 namespace Pierce;
 use Noair\Noair,
     Noair\Listener,
-    Noair\Event;
+    Noair\Event,
+    Pierce\Connection\Message;
 
 class StdEvents extends Listener
 {
@@ -13,25 +14,38 @@ class StdEvents extends Listener
             ['timer:' . ($client->rxtimeout * 125), [$this, 'pingCheck']],
         ];
     }
-    public function onReceived(Event $e)
-    {
-        $msg = $e->data;
-    }
 
     public function pingCheck(Event $e)
     {
-        $time = time();
         $caller = $e->caller;
+        $time = Connection::currentTimeMillis();
 
-        if ($time - $caller->_lastrx > $caller->_rxtimeout):
-            $caller->reconnect();
-            $caller->_lastrx = $time;
-        elseif ($time - $caller->_lastrx > $caller->_rxtimeout/2):
+        if ($caller->lastrx + $caller->rxtimeout < $time):
+            $this->noair->publish(new Event('reconnect', $caller->name, $this));
+        elseif ($caller->lastrx + $caller->rxtimeout/2 < $time):
             $this->noair->publish(new Event('send', [
                 'connection' => $caller->name,
-                'message' => 'PING '.$caller->address,
-                'priority' => SMARTIRC_CRITICAL,
+                'message' => 'PING ' . $caller->address,
+                'priority' => Message::URGENT,
             ], $this));
         endif;
+    }
+
+    public function onConnectionPropertyChange(Event $e)
+    {
+        switch ($e->data[0]):
+            case 'nick':
+
+            case 'username':
+
+            case 'realname':
+
+        endswitch;
+    }
+
+    public function onReceived(Event $e)
+    {
+        $msg = $e->data;
+        // analyze incoming message and re-publish a more specific event
     }
 }

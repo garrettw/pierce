@@ -6,7 +6,7 @@ use Noair\Event;
 class Client extends Noair\Listener
 {
     private $connections = [];
-    private $bots = [];
+    private $bots        = [];
     private $interrupt   = false;
     private $pollrate    = 10; // in Hz
 
@@ -32,19 +32,21 @@ class Client extends Noair\Listener
 
     public function __set($name, $val)
     {
-        if (in_array($name, ['nick', 'username', 'realname'])
-            && $this->$name
-            && $this->$name != $val
-        ):
-            if ($name != 'realname'):
-                $this->$name = str_replace(' ', '', $val);
-            endif;
+        switch ($name):
+            case 'nick':
+            case 'username':
+                $val = str_replace(' ', '', $val);
+            case 'realname':
+                if ($this->$name && $this->$name != $val):
+                    $this->noair->publish(new Event('clientPropertyChange', [$name, $val], $this));
+                    $this->$name = $val;
+                endif;
+            case 'connections':
+                break;
 
-            // send change to servers
-
-        elseif ($name != 'connections'):
-            $this->$name = $val;
-        endif;
+            default:
+                $this->$name = $val;
+        endswitch;
     }
 
     public function addConnection(Connection $conn, $connectnow = false)
@@ -65,9 +67,15 @@ class Client extends Noair\Listener
         return $this;
     }
 
-    public function addBots($bots)
+    public function addBot($bot)
     {
-        $this->bots = (array) $bots;
+        if (is_array($bot)):
+            foreach ($bot as $each):
+                $this->addBot($each);
+            endforeach;
+        else:
+            $this->bots[] = $bot;
+        endif;
         return $this;
     }
 
