@@ -181,17 +181,17 @@ class Connection extends Listener
         // check the socket to see if data is waiting for us
         // this will trigger a warning when a signal is received
         $result = stream_select($r = array($this->sock), $w = null, $e = null, 0);
-        $rawdata = null;
+        $rawmsg = null;
 
         if ($result):
             // the socket has data to read, so read and block until we get an EOL
-            $rawdata = '';
+            $rawmsg = '';
             do {
                 if ($get = fgets($this->sock)):
-                    $rawdata .= $get;
+                    $rawmsg .= $get;
                 endif;
-                $rawlen = strlen($rawdata);
-            } while ($rawlen && $rawdata{$rawlen - 1} != "\n");
+                $rawlen = strlen($rawmsg);
+            } while ($rawlen && $rawmsg{$rawlen - 1} != "\n");
 
         elseif ($result === false):
             // panic! something went wrong! maybe received a signal.
@@ -200,14 +200,19 @@ class Connection extends Listener
         endif;
         // no data on the socket
 
+        $rawmsg = trim($rawmsg);
+        $time = time();
         /* if no data, check for rx timeout */
-        if (empty($rawdata) && $this->lastrx + $this->rxtimeout <= time()):
-            $this->noair->publish(new Event('rxTimeout', null, $this));
+        if (empty($rawmsg)):
+            if ($this->lastrx + $this->rxtimeout <= $time):
+                $this->noair->publish(new Event('rxTimeout', null, $this));
+            endif;
             return;
         endif;
 
-        // if received data, hand each msg off to StdEvents
-        $this->noair->publish(new Event('received', new Message($msg), $this));
+        // received data, so hand each msg off to StdEvents
+        $this->lastrx = $time;
+        $this->noair->publish(new Event('received', new Message($rawmsg), $this));
     }
 
     private function rawSend($msg, $priority = Message::NORMAL)
