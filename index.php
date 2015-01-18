@@ -58,14 +58,13 @@ class MyBot extends Noair\Listener
 
 $client =
     $dice->create('Pierce\\Client', [[
-        'realname' => 'PIeRCe IRC bot',
+        'realname' => 'PIeRCe bot',
         // 'username' => 'pierce',
     ]])
     ->addConnection($dice->create('Pierce\\Connection', [[
         'name'        => 'freenode',
-        'servers'     => [
-            'chat.freenode.net:6667',
-        ],
+        'type'        => new \Pierce\Numerics\RFC(),
+        'servers'     => ['chat.freenode.net:6667'],
         'nick'        => 'PIeRCe',
         'channels'    => ['#pierce-test'],
         // 'bindto'      => '0.0.0.0:0',

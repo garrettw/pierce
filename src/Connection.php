@@ -9,6 +9,7 @@ use Noair\Listener,
 class Connection extends Listener
 {
     private $name;
+    private $type;
     private $servers = [];
     private $bindto;
     private $nick = '';
