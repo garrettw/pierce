@@ -22,16 +22,15 @@ class Connection extends Listener
     private $channels = [];
     private $users = [];
     private $autoretry = false;
-    private $autoretrycount = 0;
     private $autoretrymax = 3;
 
     private $sock;
     private $remoteaddr = '';
     private $connected = false;
     private $loggedin  = false;
-    private $lastrx    = 0;
-    private $lasttx    = 0;
-    private $lasttxmsg = 0;
+    private $lastrx    = 0; // in seconds
+    private $lasttx    = 0; // in milliseconds
+    private $lasttxmsg = 0; // in milliseconds
     private $messagequeue;
     private $sendrate  = 4; // in Hz -- should be <= Client::$pollrate
     private $rxtimeout = 300;
@@ -48,6 +47,10 @@ class Connection extends Listener
 
         if (!$this->username):
             $this->username = str_replace(' ', '', exec('whoami'));
+        endif;
+
+        if (!$this->autoretry):
+            $this->autoretrymax = 1;
         endif;
 
         $this->messagequeue = [
@@ -102,60 +105,56 @@ class Connection extends Listener
             return $this;
         endif;
 
-        $timeout = ini_get("default_socket_timeout");
-        $context = stream_context_create(['socket' => ['bindto' => $this->bindto]]);
+        for ($i = 0; $i < $this->autoretrymax; $i++):
+            $timeout = ini_get("default_socket_timeout");
+            $context = stream_context_create(['socket' => ['bindto' => $this->bindto]]);
 
-        foreach ($this->servers as $address):
-            if ($this->sock =
-                stream_socket_client($address, $errno, $errstr, $timeout,
-                    STREAM_CLIENT_CONNECT, $context)
-            ):
-                if (!stream_set_blocking($this->sock, 0)):
-                    throw new Exception($this->noair, 'Unable to unblock stream');
+            foreach ($this->servers as $address):
+                if ($this->sock =
+                    stream_socket_client($address, $errno, $errstr, $timeout,
+                        STREAM_CLIENT_CONNECT, $context)
+                ):
+                    if (!stream_set_blocking($this->sock, 0)):
+                        throw new Exception($this->noair, 'Unable to unblock stream');
+                    endif;
+
+                    $this->remoteaddr = $address;
+                    $this->lastrx = time();
+
+                    if ($this->password):
+                        $this->rawSend('PASS ' . $this->password, Message::URGENT);
+                    endif;
+
+                    $this->rawSend('NICK ' . $this->nick, Message::URGENT);
+
+                    if (!is_numeric($this->usermode)):
+                        $this->usermode = 0;
+                    endif;
+
+                    $this->rawSend("USER {$this->username} {$this->usermode} * :{$this->realname}",
+                                Message::URGENT);
+
+                    foreach($this->perform as $cmd):
+                        $this->rawSend($cmd, Message::HIGH);
+                    endforeach;
+
+                    if ($this->channels):
+                        $this->noair->publish(new Event('join', $this->channels, $this));
+                    endif;
+
+                    $this->connected = true;
+                    $this->noair->publish(new Event('connected', $this->name, $this));
+                    return $this;
                 endif;
 
-                $this->remoteaddr = $address;
-                $this->lastrx = self::currentTimeMillis();
+                $faildata = [$this->name, $errno, $errstr];
+                $this->noair->publish(new Event('connectFailed', $faildata, $this));
+            endforeach;
+        endfor;
 
-                if ($this->password):
-                    $this->rawSend('PASS ' . $this->password, Message::URGENT);
-                endif;
-
-                $this->rawSend('NICK ' . $this->nick, Message::URGENT);
-
-                if (!is_numeric($this->usermode)):
-                    $this->usermode = 0;
-                endif;
-
-                $this->rawSend("USER {$this->username} {$this->usermode} * :{$this->realname}",
-                            Message::URGENT);
-
-                foreach($this->perform as $cmd):
-                    $this->rawSend($cmd, Message::HIGH);
-                endforeach;
-
-                if ($this->channels):
-                    $this->noair->publish(new Event('join', $this->channels, $this));
-                endif;
-
-                $this->connected = true;
-                $this->noair->publish(new Event('connected', $this->name, $this));
-                return $this;
-            endif;
-
-            $faildata = [$this->name, $errno, $errstr];
-            $this->noair->publish(new Event('connectFailed', $faildata, $this));
-        endforeach;
-
-        if ($this->autoretry && $this->autoretrycount < $this->autoretrymax):
-            $this->autoretrycount++;
-            return $this->connect();
-        else:
-            $this->autoretrycount = 0;
-            $this->onDisconnect();
-            throw new Exception($this->noair,
-                "Unable to connect to any server for connection '{$this->name}'");
-        endif;
+        $this->onDisconnect();
+        throw new Exception($this->noair,
+            "Unable to connect to any server for connection '{$this->name}'");
     }
 
     public function listenOnce()
@@ -168,7 +167,7 @@ class Connection extends Listener
 
         /* send queued messages */
         if (self::currentTimeMillis()
-            >= $this->lasttx + (int) ((1 / $this->sendrate) * 1000)
+            >= $this->lasttx + (int) ((1.0 / $this->sendrate) * 1000)
         ):
             if (count($this->messagequeue[Message::HIGH])):
                 $this->rawSend(array_shift($this->messagequeue[Message::HIGH]), Message::HIGH);
@@ -184,25 +183,28 @@ class Connection extends Listener
         $result = stream_select($r = array($this->sock), $w = null, $e = null, 0);
         $rawdata = null;
 
-        if (!empty($result)) {
+        if ($result):
             // the socket has data to read, so read and block until we get an EOL
             $rawdata = '';
             do {
                 if ($get = fgets($this->sock)):
                     $rawdata .= $get;
                 endif;
-            } while ($rawdata{strlen($rawdata) - 1} != "\n");
+                $rawlen = strlen($rawdata);
+            } while ($rawlen && $rawdata{$rawlen - 1} != "\n");
 
-        } else if ($result === false) {
+        elseif ($result === false):
             // panic! something went wrong! maybe received a signal.
             // not sure what to do here yet.
-        }
+            die;
+        endif;
         // no data on the socket
 
-        /* if no data, check for timeout */
-        $time = self::currentTimeMillis();
-        if (empty($rawdata) && $this->lastrx + ):
-
+        /* if no data, check for rx timeout */
+        if (empty($rawdata) && $this->lastrx + $this->rxtimeout <= time()):
+            $this->noair->publish(new Event('rxTimeout', null, $this));
+            return;
+        endif;
 
         // if received data, hand each msg off to StdEvents
         $this->noair->publish(new Event('received', new Message($msg), $this));
@@ -244,7 +246,7 @@ class Connection extends Listener
 
         $this->connected = false;
         // reset stream/socket stuff
-        return $this->connect();
+        return $this->onConnect($e);
     }
 
     public function onRawSend(PEvent\RawSendEvent $rse)
@@ -257,12 +259,6 @@ class Connection extends Listener
             $this->sendNow($rse->data['message']);
         else:
             $this->messagequeue[$rse->data['priority']][] = $rse->data['message'];
-        endif;
-
-        if (!empty($rse->data['expectResponse'])):
-            $wait = $rse->caller->rxtimeout;
-            $this->noair->subscribe("timer:$wait", [$this, 'onRxTimeout']);
-            // TODO: this needs to be saved for unsubscribing
         endif;
     }
 
@@ -284,7 +280,7 @@ class Connection extends Listener
 
     public function onRxTimeout(Event $e)
     {
-        $this->noair->publish(new Event('connectionError', $this->name, $this));
+        return $this->noair->publish(new Event('connectionError', $this->name, $this));
     }
 
     private function updateState()
