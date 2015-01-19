@@ -2,10 +2,9 @@
 
 namespace Pierce;
 use Noair\Noair,
-    Noair\Listener,
     Noair\Event;
 
-class Logger extends Listener
+class Logger extends \Noair\Listener
 {
     private $logger;
 

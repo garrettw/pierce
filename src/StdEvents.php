@@ -1,11 +1,10 @@
 <?php
 namespace Pierce;
 use Noair\Noair,
-    Noair\Listener,
     Noair\Event,
     Pierce\Connection\Message;
 
-class StdEvents extends Listener
+class StdEvents extends \Noair\Listener
 {
     public function __construct(Client $client)
     {

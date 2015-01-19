@@ -3,7 +3,7 @@
 namespace Pierce;
 use Noair\Event;
 
-class Client extends Noair\Listener
+class Client extends \Noair\Listener
 {
     private $connections = [];
     private $bots        = [];

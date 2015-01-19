@@ -1,12 +1,11 @@
 <?php
 
 namespace Pierce;
-use Noair\Listener,
-    Noair\Event,
+use Noair\Event,
     Pierce\Event as PEvent,
     Pierce\Connection\Message;
 
-class Connection extends Listener
+class Connection extends \Noair\Listener
 {
     private $name;
     private $type;
