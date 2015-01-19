@@ -9,6 +9,8 @@ class RFC
     const RPL_CREATED = '003';
     const RPL_MYINFO = '004';
     const RPL_BOUNCE = '005';
+    const RPL_YOURID = '042';
+    const RPL_SAVENICK = '043';
     const RPL_TRACELINK = '200';
     const RPL_TRACECONNECTING = '201';
     const RPL_TRACEHANDSHAKE = '202';
@@ -36,11 +38,13 @@ class RFC
     const RPL_SERVICE = '233';
     const RPL_SERVLIST = '234';
     const RPL_SERVLISTEND = '235';
+    const RPL_STATSIAUTH = '239';
     const RPL_STATSVLINE = '240';
     const RPL_STATSLLINE = '241';
     const RPL_STATSUPTIME = '242';
     const RPL_STATSOLINE = '243';
     const RPL_STATSHLINE = '244';
+    const RPL_STATSSLINE = '245';
     const RPL_STATSPING = '246';
     const RPL_STATSBLINE = '247';
     const RPL_STATSULINE = '249';
@@ -83,7 +87,6 @@ class RFC
     const RPL_ENDOFWHOIS = '318';
     const RPL_WHOISCHANNELS = '319';
     const RPL_WHOIS_HIDDEN = '320';
-    const RPL_LISTSTART = '321';
     const RPL_LIST = '322';
     const RPL_LISTEND = '323';
     const RPL_CHANNELMODEIS = '324';
@@ -186,6 +189,7 @@ class RFC
     const ERR_RESTRICTED = '484';
     const ERR_UNIQOPRIVSNEEDED = '485';
     const ERR_NONONREG = '486';
+    const ERR_TSLESSCHAN = '488';
     const ERR_NOOPERHOST = '491';
     const ERR_NOSERVICEHOST = '492';
     const ERR_UMODEUNKNOWNFLAG = '501';

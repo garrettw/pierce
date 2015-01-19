@@ -35,7 +35,7 @@ class Connection extends Listener
     private $sendrate  = 4; // in Hz -- should be <= Client::$pollrate
     private $rxtimeout = 300;
 
-    public function __construct(array $set = [])
+    public function __construct(array $set = [], \Dice\Dice $dice)
     {
         foreach ($set as $prop => $val):
             if ($name == 'nick' || $name == 'username'):
@@ -52,6 +52,25 @@ class Connection extends Listener
         if (!$this->autoretry):
             $this->autoretrymax = 1;
         endif;
+
+        if (!isset($this->type)):
+            $map = [
+                'quakenet' => 'Asuka',
+                'austnet' => 'AustHex',
+                'dalnet' => 'Bahamut',
+                'ircnet' => 'IRCnet',
+                'freenode' => 'Ircu',
+                'undernet' => 'Ircu',
+            ];
+            $lowername = strtolower($this->name);
+
+            if (array_key_exists($lowername, $map)):
+                $this->type = $map[$lowername];
+            else:
+                $this->type = 'RFC';
+            endif;
+        endif;
+        $this->type = $dice->create('Pierce\\Numerics\\' . $this->type);
 
         $this->messagequeue = [
             Message::HIGH => [], Message::NORMAL => [], Message::LOW => [],

@@ -63,10 +63,10 @@ $client =
     ]])
     ->addConnection($dice->create('Pierce\\Connection', [[
         'name'        => 'freenode',
-        'type'        => new \Pierce\Numerics\RFC(),
         'servers'     => ['chat.freenode.net:6667'],
         'nick'        => 'PIeRCe',
         'channels'    => ['#pierce-test'],
+        // 'type'        => 'Ircu',
         // 'bindto'      => '0.0.0.0:0',
         // 'password'    => 'none',
         // 'usermode'    => 0,

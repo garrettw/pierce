@@ -26,10 +26,13 @@ class Ircu extends RFC
     const RPL_LISTUSAGE = '334';
     const RPL_USERIP = '340';
     const RPL_WHOSPCRPL = '354';
+    const RPL_HOSTHIDDEN = '396';
     const ERR_QUERYTOOLONG = '416';
     const ERR_NICKTOOFAST = '438';
     const ERR_TARGETTOOFAST = '439';
+    const ERR_NOTIMPLEMENTED = '449';
     const ERR_INVALIDUSERNAME = '468';
+    const ERR_VOICENEEDED = '489';
     const ERR_NOFEATURE = '493';
     const ERR_BADFEATURE = '494';
     const ERR_BADLOGTYPE = '495';
@@ -70,4 +73,6 @@ class Ircu extends RFC
     const ERR_BANNICKCHANGE = '437';
     const ERR_NOCHANMODES = '477rfc';
     const ERR_NEEDREGGEDNICK = '477';
+    const ERR_RESTRICTED = '484rfc';
+    const ERR_ISCHANSERVICE = '484';
 }

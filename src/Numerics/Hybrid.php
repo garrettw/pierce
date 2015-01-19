@@ -9,7 +9,6 @@ class Hybrid extends RFC
     const RPL_STATSPLINE = '220';
     const RPL_STATSFLINE = '224';
     const RPL_STATSDLINE = '225';
-    const RPL_STATSSLINE = '245';
     const RPL_STATSULINE = '246';
     const RPL_LOCALUSERS = '265';
     const RPL_GLOBALUSERS = '266';
