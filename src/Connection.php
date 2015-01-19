@@ -17,7 +17,7 @@ class Connection extends Listener
     private $realname = '';
     private $password = '';
     private $perform = [];
-    private $motd;
+    private $motd = [];
     private $usermode;
     private $channels = [];
     private $users = [];
