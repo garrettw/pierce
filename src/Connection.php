@@ -38,8 +38,8 @@ class Connection extends Listener
     public function __construct(array $set = [], \Dice\Dice $dice)
     {
         foreach ($set as $prop => $val):
-            if ($name == 'nick' || $name == 'username'):
-                $this->$name = str_replace(' ', '', $val);
+            if ($prop == 'nick' || $prop == 'username'):
+                $this->$prop = str_replace(' ', '', $val);
             else:
                 $this->$prop = $val;
             endif;

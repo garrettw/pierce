@@ -17,8 +17,8 @@ class Client extends Noair\Listener
     public function __construct($set = [])
     {
         foreach ($set as $prop => $val):
-            if ($name == 'nick' || $name == 'username'):
-                $this->$name = str_replace(' ', '', $val);
+            if ($prop == 'nick' || $prop == 'username'):
+                $this->$prop = str_replace(' ', '', $val);
             else:
                 $this->$prop = $val;
             endif;
