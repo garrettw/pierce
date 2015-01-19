@@ -1,14 +1,13 @@
 <?php
 namespace Pierce;
-use Noair\Noair,
-    Noair\Event,
+use Noair\Event,
     Pierce\Connection\Message;
 
 class StdEvents extends \Noair\Listener
 {
     public function __construct(Client $client)
     {
-        $this->defaultPriority = Noair::PRIORITY_HIGHEST;
+        $this->defaultPriority = \Noair\Noair::PRIORITY_HIGHEST;
         $this->handlers = [
             ['timer:' . ($client->rxtimeout * 125), [$this, 'pingCheck']],
         ];

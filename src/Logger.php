@@ -1,8 +1,7 @@
 <?php
 
 namespace Pierce;
-use Noair\Noair,
-    Noair\Event;
+use Noair\Event;
 
 class Logger extends \Noair\Listener
 {
@@ -10,7 +9,7 @@ class Logger extends \Noair\Listener
 
     public function __construct(\Monolog\Logger $logger)
     {
-        $this->handlers[] = ['all', [$this, 'log'], Noair::PRIORITY_URGENT, true];
+        $this->handlers[] = ['all', [$this, 'log'], \Noair\Noair::PRIORITY_URGENT, true];
         $this->logger = $logger;
     }
 

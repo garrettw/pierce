@@ -2,7 +2,7 @@
 
 namespace Pierce;
 use Noair\Event,
-    Pierce\Event as PEvent,
+    Pierce\Event\RawSendEvent,
     Pierce\Connection\Message;
 
 class Connection extends \Noair\Listener
@@ -235,7 +235,7 @@ class Connection extends \Noair\Listener
 
     private function rawSend($msg, $priority = Message::NORMAL)
     {
-        $this->noair->publish(new PEvent\RawSendEvent([
+        $this->noair->publish(new RawSendEvent([
             'message' => $msg,
             'priority' => $priority,
         ], $this));
@@ -272,7 +272,7 @@ class Connection extends \Noair\Listener
         return $this->onConnect($e);
     }
 
-    public function onRawSend(PEvent\RawSendEvent $rse)
+    public function onRawSend(RawSendEvent $rse)
     {
         if ($rse->data['connection'] != $this->name):
             return;
