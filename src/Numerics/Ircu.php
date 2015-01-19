@@ -17,6 +17,7 @@ class Ircu extends RFC
     const RPL_STATSENGINE = '237';
     const RPL_STATSFLINE = '238';
     const RPL_STATSULINE = '248';
+    const RPL_STATSCONN = '250';
     const RPL_PRIVS = '270';
     const RPL_SILELIST = '271';
     const RPL_ENDOFSILELIST = '272';
@@ -55,8 +56,6 @@ class Ircu extends RFC
     const RPL_STATSTLINE = '246';
     const RPL_STATSBLINE = '247rfc';
     const RPL_STATSGLINE = '247';
-    const RPL_STATSDLINE = '250rfc';
-    const RPL_STATSCONN = '250';
     const RPL_ACCEPTLIST = '281rfc';
     const RPL_ENDOFGLIST = '281';
     const RPL_ENDOFACCEPT = '282rfc';
