@@ -45,15 +45,104 @@ class StdEvents extends \Noair\Listener
     {
         $msg = $e->data;
         // analyze incoming message and re-publish a more specific event
-        if (is_numeric($msg->cmd)):
-            $cmdTranslated = strtolower($e->caller->type->code[$msg->cmd]);
-            $cmdTranslated = substr($cmdTranslated, 0, 3)
-                            .ucfirst(substr($cmdTranslated, 4));
-            // so now '001' is 'rplWelcome'
-            $this->noair->publish(new Event($cmdTranslated, $msg, $e->caller));
-        else:
-            $this->noair->publish(new Event(strtolower($msg->cmd), $msg, $e->caller));
-        endif;
+        $cmdName = (is_numeric($msg->cmd))
+            ? strtolower($e->caller->type->code[$msg->cmd])
+            : strtolower($msg->cmd);
+
+        if (strpos($cmdName, '_')) {
+            $parts = explode('_', $cmdName);
+            $partcount = count($parts);
+
+            for ($i = 1; $i < $partcount; $i++) {
+                $parts[$i] = ucfirst($parts[$i]);
+            }
+
+            $cmdName = implode($parts);
+        }
+
+        $this->noair->publish(new Event($cmdName, $msg, $e->caller));
+    }
+
+    public function onChanmsg(Event $e)
+    {
+
+    }
+
+    public function onChanmsgAction(Event $e)
+    {
+
+    }
+
+    public function onChannotice(Event $e)
+    {
+
+    }
+
+    public function onCtcp(Event $e)
+    {
+
+    }
+
+    public function onCtcpReply(Event $e)
+    {
+
+    }
+
+    public function onErrNicknameinuse(Event $e)
+    {
+        $newnick = substr($e->caller->nick, 0, 5) . rand(0, 999);
+        // TODO: send $newnick to server
+    }
+
+    public function onJoin(Event $e)
+    {
+        // did we just join a channel, or did someone else join one we're in?
+        // either create channel and get its info, or retrieve chan. Add user.
+    }
+
+    public function onKick(Event $e)
+    {
+        // is it us? remove user from channel
+    }
+
+    public function onMode(Event $e)
+    {
+        // is it us? update user
+    }
+
+    public function onNick(Event $e)
+    {
+        // is it us? find user and update him
+    }
+
+    public function onNotice(Event $e)
+    {
+
+    }
+
+    public function onQuit(Event $e)
+    {
+        // remove user from channel
+    }
+
+    public function onPart(Event $e)
+    {
+        // is it us? remove user from channel
+    }
+
+    public function onPing(Event $e)
+    {
+        // $this->send('PONG :' . $ircdata->message, SMARTIRC_CRITICAL);
+    }
+
+    public function onPrivmsg(Event $e)
+    {
+
+    }
+
+    public function onPrivmsgAction(Event $e)
+    {
+
     }
 
     public function onRplWelcome(Event $e)
@@ -107,9 +196,8 @@ class StdEvents extends \Noair\Listener
         // TODO: implement
     }
 
-    public function onErrNicknameinuse(Event $e)
+    public function onTopic(Event $e)
     {
-        $newnick = substr($e->caller->nick, 0, 5) . rand(0, 999);
-        // TODO: send $newnick to server
+        // update topic
     }
 }
