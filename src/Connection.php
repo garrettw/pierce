@@ -32,7 +32,6 @@ class Connection extends \Noair\Listener
     private $lasttxmsg = 0; // in milliseconds
     private $messagequeue;
     private $sendrate  = 4; // in Hz -- should be <= Client::$pollrate
-    private $rxtimeout = 300;
 
     public function __construct(array $set = [], \Dice\Dice $dice)
     {
@@ -72,7 +71,7 @@ class Connection extends \Noair\Listener
         $this->type = $dice->create('Pierce\\Numerics\\' . $this->type);
 
         $this->messagequeue = [
-            Message::HIGH => [], Message::NORMAL => [], Message::LOW => [],
+            Message::HIGH => $this->perform, Message::NORMAL => [], Message::LOW => [],
         ];
     }
 
@@ -103,6 +102,55 @@ class Connection extends \Noair\Listener
             default:
                 $this->$name = $val;
         endswitch;
+    }
+
+    public function listenOnce()
+    {
+        if (!$this->updateState()):
+            return false;
+        endif;
+
+        /* send queued messages */
+        $nextInterval = $this->lasttx + (int) ((1.0 / $this->sendrate) * 1000);
+        if (self::currentTimeMillis() >= $nextInterval):
+            foreach ($this->messagequeue as $prio => $msgs):
+                if (count($msgs)):
+                    $this->sendNow(array_shift($this->messagequeue[$prio]));
+                    break;
+                endif;
+            endforeach;
+        endif;
+
+        // check the socket to see if data is waiting for us
+        // this will trigger a warning when a signal is received
+        $result = stream_select($r = array($this->sock), $w = null, $e = null, 0);
+        $rawmsg = null;
+
+        if ($result):
+            // the socket has data to read, so read and block until we get an EOL
+            $rawmsg = '';
+            do {
+                if ($get = fgets($this->sock)):
+                    $rawmsg .= $get;
+                endif;
+                $rawlen = strlen($rawmsg);
+            } while ($rawlen && $rawmsg{$rawlen - 1} != "\n");
+
+            $rawmsg = trim($rawmsg);
+        elseif ($result === false):
+            // panic! something went wrong! maybe received a signal.
+            // not sure what to do here yet.
+            die;
+        endif;
+        // no data on the socket
+
+        $this->noair->publish(new Event('timer', $rawmsg, $this));
+
+        if (!empty($rawmsg)):
+            // received data, so hand each msg off to StdEvents
+            $this->lastrx = $time;
+            $this->noair->publish(new Event('received', new Message($rawmsg), $this));
+        endif;
     }
 
     public function onClientPropertyChange(Event $e)
@@ -138,29 +186,17 @@ class Connection extends \Noair\Listener
 
                     $this->remoteaddr = $address;
                     $this->lastrx = time();
+                    is_numeric($this->usermode) or $this->usermode = 0;
 
-                    if ($this->password):
-                        $this->rawSend('PASS ' . $this->password, Message::URGENT);
-                    endif;
-
-                    $this->rawSend('NICK ' . $this->nick, Message::URGENT);
-
-                    if (!is_numeric($this->usermode)):
-                        $this->usermode = 0;
-                    endif;
-
-                    $this->rawSend("USER {$this->username} {$this->usermode} * :{$this->realname}",
-                                Message::URGENT);
-
-                    foreach($this->perform as $cmd):
-                        $this->rawSend($cmd, Message::HIGH);
-                    endforeach;
+                    $this->password and $this->sendNow("PASS {$this->password}");
+                    $this->sendNow("NICK {$this->nick}");
+                    $this->sendNow("USER {$this->username} {$this->usermode} * :{$this->realname}");
 
                     if ($this->channels):
                         $this->noair->publish(new Event('join', $this->channels, $this));
                     endif;
 
-                    $this->connected = true;
+                    $this->updateState();
                     $this->noair->publish(new Event('connected', $this->name, $this));
                     return $this;
                 endif;
@@ -170,75 +206,9 @@ class Connection extends \Noair\Listener
             endforeach;
         endfor;
 
-        $this->onDisconnect();
+        $this->onDisconnect($e);
         throw new Exception($this->noair,
             "Unable to connect to any server for connection '{$this->name}'");
-    }
-
-    public function listenOnce()
-    {
-        if (!$this->updateState()):
-            return false;
-        endif;
-
-        $this->noair->publish(new Event('timer', null, $this));
-
-        /* send queued messages */
-        if (self::currentTimeMillis()
-            >= $this->lasttx + (int) ((1.0 / $this->sendrate) * 1000)
-        ):
-            if (count($this->messagequeue[Message::HIGH])):
-                $this->rawSend(array_shift($this->messagequeue[Message::HIGH]), Message::HIGH);
-            elseif (count($this->messagequeue[Message::NORMAL])):
-                $this->rawSend(array_shift($this->messagequeue[Message::NORMAL]));
-            elseif (count($this->messagequeue[Message::LOW])):
-                $this->rawSend(array_shift($this->messagequeue[Message::LOW]), Message::LOW);
-            endif;
-        endif;
-
-        // check the socket to see if data is waiting for us
-        // this will trigger a warning when a signal is received
-        $result = stream_select($r = array($this->sock), $w = null, $e = null, 0);
-        $rawmsg = null;
-
-        if ($result):
-            // the socket has data to read, so read and block until we get an EOL
-            $rawmsg = '';
-            do {
-                if ($get = fgets($this->sock)):
-                    $rawmsg .= $get;
-                endif;
-                $rawlen = strlen($rawmsg);
-            } while ($rawlen && $rawmsg{$rawlen - 1} != "\n");
-
-        elseif ($result === false):
-            // panic! something went wrong! maybe received a signal.
-            // not sure what to do here yet.
-            die;
-        endif;
-        // no data on the socket
-
-        $rawmsg = trim($rawmsg);
-        $time = time();
-        /* if no data, check for rx timeout */
-        if (empty($rawmsg)):
-            if ($this->lastrx + $this->rxtimeout <= $time):
-                $this->noair->publish(new Event('rxTimeout', null, $this));
-            endif;
-            return;
-        endif;
-
-        // received data, so hand each msg off to StdEvents
-        $this->lastrx = $time;
-        $this->noair->publish(new Event('received', new Message($rawmsg), $this));
-    }
-
-    private function rawSend($msg, $priority = Message::NORMAL)
-    {
-        $this->noair->publish(new RawSendEvent([
-            'message' => $msg,
-            'priority' => $priority,
-        ], $this));
     }
 
     public function onConnectionError(Event $e)
@@ -250,14 +220,15 @@ class Connection extends \Noair\Listener
         return $this->noair->publish(new Event('reconnect', $this->name, $this));
     }
 
-    public function onDisconnect(Event $e = null)
+    public function onDisconnect(Event $e)
     {
-        if (isset($e) && $e->data != $this->name):
+        if ($e->data != $this->name):
             return;
         endif;
 
+        fclose($this->sock);
         $this->noair->publish(new Event('disconnected', $this->name, $this));
-        $this->connected = false;
+        $this->updateState();
         return $this->unsubscribe();
     }
 
@@ -285,12 +256,15 @@ class Connection extends \Noair\Listener
         endif;
     }
 
+    public function onRxTimeout(Event $e)
+    {
+        if ($e->data == $this->name):
+            return $this->noair->publish(new Event('connectionError', $this->name, $this));
+        endif;
+    }
+
     private function sendNow($message)
     {
-        if (!$this->updateState()):
-            return false;
-        endif;
-
         if (($result = fwrite($this->sock, $message . "\r\n")) !== false):
             $this->noair->publish(new Event('sent', $message, $this));
             $this->lasttx = self::currentTimeMillis();
@@ -299,11 +273,6 @@ class Connection extends \Noair\Listener
 
         $this->noair->publish(new Event('connectionError', $this->name, $this));
         return false;
-    }
-
-    public function onRxTimeout(Event $e)
-    {
-        return $this->noair->publish(new Event('connectionError', $this->name, $this));
     }
 
     private function updateState()

@@ -9,6 +9,7 @@ class Client extends \Noair\Listener
     private $bots        = [];
     private $interrupt   = false;
     private $pollrate    = 10; // in Hz
+    private $rxtimeout   = 300;
 
     private $nick;
     private $username;

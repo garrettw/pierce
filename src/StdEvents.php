@@ -1,29 +1,37 @@
 <?php
 namespace Pierce;
 use Noair\Event,
-    Pierce\Connection\Message;
+    Pierce\Connection\Message,
+    Pierce\Event\RawSendEvent;
 
 class StdEvents extends \Noair\Listener
 {
+    private $rxtimeout;
+
     public function __construct(Client $client)
     {
         $this->defaultPriority = \Noair\Noair::PRIORITY_HIGHEST;
+        $this->rxtimeout = $client->rxtimeout;
         $this->handlers = [
-            ['timer:' . ($client->rxtimeout * 125), [$this, 'pingCheck']],
+            ['timer:' . ($this->rxtimeout / 8), [$this, 'pingCheck']],
         ];
     }
 
     public function pingCheck(Event $e)
     {
-        $caller = $e->caller;
-        $time = Connection::currentTimeMillis();
+        if (!empty($e->data)):
+            return;
+        endif;
 
-        if ($caller->lastrx + $caller->rxtimeout < $time):
-            $this->noair->publish(new Event('reconnect', $caller->name, $this));
-        elseif ($caller->lastrx + $caller->rxtimeout/2 < $time):
-            $this->noair->publish(new Event('send', [
-                'connection' => $caller->name,
-                'message' => 'PING ' . $caller->address,
+        $conn = $e->caller;
+        $time = time();
+
+        if ($conn->lastrx + $this->rxtimeout < $time):
+            $this->noair->publish(new Event('rxTimeout', $conn->name, $this));
+        elseif ($conn->lastrx + $this->rxtimeout/2 < $time):
+            $this->noair->publish(new RawSendEvent([
+                'connection' => $conn->name,
+                'message' => 'PING ' . $conn->address,
                 'priority' => Message::URGENT,
             ], $this));
         endif;
@@ -132,7 +140,11 @@ class StdEvents extends \Noair\Listener
 
     public function onPing(Event $e)
     {
-        // $this->send('PONG :' . $ircdata->message, SMARTIRC_CRITICAL);
+        $this->noair->publish(new RawSendEvent([
+            'connection' => $e->caller->name,
+            'message' => "PONG :" . $e->data->body,
+            'priority' => Message::URGENT,
+        ], $this));
     }
 
     public function onPrivmsg(Event $e)
@@ -194,6 +206,21 @@ class StdEvents extends \Noair\Listener
     public function onRplTopic(Event $e)
     {
         // TODO: implement
+    }
+
+    public function onSendQuit(Event $e)
+    {
+        $message = isset($e->data['message'])
+            ? " :".$e->data['message']
+            : "";
+
+        $this->noair->publish(new RawSendEvent([
+            'connection' => $e->data['connection'],
+            'message' => "QUIT" . $message,
+            'priority' => $e->data['priority'],
+        ], $this));
+
+        $this->noair->publish(new Event('disconnect', $e->data['connection'], $this));
     }
 
     public function onTopic(Event $e)
