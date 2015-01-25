@@ -1,6 +1,6 @@
 {
     "name": "garrettw/pierce",
-    "description": "PIeRCe is an IRC bot framework written for PHP 5.4+.",
+    "description": "PIeRCe is an IRC bot framework written for PHP 5.5+.",
     "type": "library",
     "keywords": ["irc", "bot", "framework"],
     "homepage": "http://github.com/garrettw/pierce",
@@ -15,7 +15,7 @@
     "require": {
         "php": ">=5.5.0",
         "garrettw/Dice": "~1.3",
-        "garrettw/noair": "~1.0",
+        "garrettw/noair": "~0.1",
         "monolog/monolog": "~1.10"
     },
     "require-dev": {
