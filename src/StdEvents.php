@@ -2,7 +2,8 @@
 namespace Pierce;
 use Noair\Event,
     Pierce\Connection\Message,
-    Pierce\Event\RawSendEvent;
+    Pierce\Event\RawSendEvent,
+    Pierce\Event\SendEvent;
 
 class StdEvents extends \Noair\Listener
 {
@@ -208,10 +209,10 @@ class StdEvents extends \Noair\Listener
         // TODO: implement
     }
 
-    public function onSendQuit(Event $e)
+    public function onSendQuit(SendEvent $e)
     {
         $message = isset($e->data['message'])
-            ? " :".$e->data['message']
+            ? " :" . $e->data['message']
             : "";
 
         $this->noair->publish(new RawSendEvent([

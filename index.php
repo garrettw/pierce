@@ -61,6 +61,8 @@ $client = $dice
         'realname' => 'PIeRCe bot',
         // 'username' => 'pierce',
     ]])
+    ->addBot([$dice->create('Pierce\\Logger'), $dice->create('Pierce\\StdEvents')])
+    ->addBot($dice->create('MyBot'))
     ->addConnection($dice->create('Pierce\\Connection', [[
         'name'        => 'freenode',
         'servers'     => ['chat.freenode.net:6667'],
@@ -70,10 +72,7 @@ $client = $dice
         // 'bindto'      => '0.0.0.0:0',
         // 'password'    => '',
         // 'usermode'    => 0,
-    ]]))
-    ->addBot([$dice->create('Pierce\\Logger'), $dice->create('Pierce\\StdEvents')])
-    ->addBot($dice->create('MyBot'))
-    ->connectAll()
+    ]]), Pierce\Client::CONNECTNOW)
     ->listen()
     ->unsubscribe();
 

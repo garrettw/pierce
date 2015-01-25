@@ -62,7 +62,7 @@ class Connection extends \Noair\Listener
             ];
             $lowername = strtolower($this->name);
 
-            if (array_key_exists($lowername, $map)):
+            if (isset($map[$lowername])):
                 $this->type = $map[$lowername];
             else:
                 $this->type = 'RFC';
