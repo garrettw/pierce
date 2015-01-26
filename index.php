@@ -1,6 +1,6 @@
 <?php
 // This file contains the basic code necessary to use PIeRCe.
-
+error_reporting(-1);
 /* BEGIN boilerplate code required for every PIeRCe usage. */
 require 'vendor/autoload.php';
 $dice = new \Dice\Dice(true);
@@ -9,7 +9,11 @@ $dice->addRule('Noair\\Noair', new \Dice\Rule(['shared' => true]));
 $dice->addRule('Noair\\Listener',
     new \Dice\Rule([
         'call' => [['subscribe', [$dice->create('Noair\\Noair')]]]
-    ]));
+    ])
+);
+$dice->addRule('Monolog\\Logger',
+    new \Dice\Rule(['constructParams' => ['pierce']])
+);
 /* END boilerplate */
 
 /* BEGIN custom bot code */

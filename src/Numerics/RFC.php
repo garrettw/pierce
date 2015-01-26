@@ -32,7 +32,6 @@ class RFC
     const RPL_STATSYLINE = '218';
     const RPL_ENDOFSTATS = '219';
     const RPL_UMODEIS = '221';
-    const RPL_MODLIST = '222';
     const RPL_SERVICEINFO = '231';
     const RPL_ENDOFSERVICES = '232';
     const RPL_SERVICE = '233';

@@ -3,7 +3,8 @@
 namespace Pierce;
 use Noair\Event,
     Pierce\Event\RawSendEvent,
-    Pierce\Connection\Message;
+    Pierce\Connection\Message,
+    Pierce\Exception as PException;
 
 class Connection extends \Noair\Listener
 {
@@ -140,7 +141,7 @@ class Connection extends \Noair\Listener
         elseif ($result === false):
             // panic! something went wrong! maybe received a signal.
             // not sure what to do here yet.
-            die;
+            throw new PException($this->noair, 'stream_select error');
         endif;
         // no data on the socket
 

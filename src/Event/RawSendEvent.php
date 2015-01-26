@@ -4,7 +4,7 @@ namespace Pierce\Event;
 use Pierce\Connection,
     Pierce\Exception as PException;
 
-class RawSendEvent extends Noair\Event
+class RawSendEvent extends \Noair\Event
 {
     public function __construct($data, $caller)
     {
