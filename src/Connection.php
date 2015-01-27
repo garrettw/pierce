@@ -124,7 +124,7 @@ class Connection extends \Noair\Listener
 
         // check the socket to see if data is waiting for us
         // this will trigger a warning when a signal is received
-        $result = stream_select($r = array($this->sock), $w = null, $e = null, 0);
+        $result = stream_select($r = [$this->sock], $w = null, $e = null, 0);
         $rawmsg = null;
 
         if ($result):

@@ -25,7 +25,6 @@ class Unreal extends RFC
     const RPL_RULESSTART = '308';
     const RPL_ENDOFRULES = '309';
     const RPL_WHOISHELPOP = '310';
-    const RPL_WHOISSPECIAL = '320';
     const RPL_LISTSYNTAX = '334';
     const RPL_WHOISBOT = '335';
     const RPL_WHOISHOST = '378';
@@ -77,6 +76,8 @@ class Unreal extends RFC
     const RPL_STATSCONN = '250';
     const RPL_USERIP = '307rfc';
     const RPL_WHOISREGNICK = '307';
+    const RPL_WHOIS_HIDDEN = '320rfc';
+    const RPL_WHOISSPECIAL = '320';
     const RPL_EXCEPTLIST = '348rfc';
     const RPL_EXLIST = '348';
     const RPL_ENDOFEXCEPTLIST = '349rfc';

@@ -160,7 +160,7 @@ class StdEvents extends \Noair\Listener
 
     public function onRplWelcome(Event $e)
     {
-        // TODO: Figure out how to do this without telling the server our nick again!
+        // Figure out how to do this without telling the server our nick again!
         // $e->caller->nick = $e->data->params[0];
     }
 
@@ -186,27 +186,27 @@ class StdEvents extends \Noair\Listener
 
     public function onRplChannelmodeis(Event $e)
     {
-        // TODO: implement
+
     }
 
     public function onRplWhoreply(Event $e)
     {
-        // TODO: implement
+
     }
 
     public function onRplNamreply(Event $e)
     {
-        // TODO: implement
+
     }
 
     public function onRplBanlist(Event $e)
     {
-        // TODO: implement
+
     }
 
     public function onRplTopic(Event $e)
     {
-        // TODO: implement
+
     }
 
     public function onSendQuit(SendEvent $e)

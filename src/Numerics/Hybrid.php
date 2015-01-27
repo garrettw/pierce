@@ -10,6 +10,7 @@ class Hybrid extends RFC
     const RPL_STATSFLINE = '224';
     const RPL_STATSDLINE = '225';
     const RPL_STATSULINE = '246';
+    const RPL_STATSDEBUG = '249';
     const RPL_LOCALUSERS = '265';
     const RPL_GLOBALUSERS = '266';
     const RPL_NOTOPERANYMORE = '385';
@@ -19,8 +20,6 @@ class Hybrid extends RFC
     // Redefined numerics
     const RPL_STATSBLINE = '247rfc';
     const RPL_STATSXLINE = '247';
-    const RPL_STATSULINE = '249rfc';
-    const RPL_STATSDEBUG = '249';
     const ERR_RESTRICTED = '484rfc';
     const ERR_DESYNC = '484';
 }

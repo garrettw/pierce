@@ -7,7 +7,6 @@ class AustHex extends RFC
     // New numerics
     const RPL_WHOISHELPER = '309';
     const RPL_WHOISSERVICE = '310';
-    const RPL_WHOISVIRT = '320';
     const RPL_CHANNEL_URL = '328';
     const RPL_MAP = '357';
     const RPL_MAPMORE = '358';
