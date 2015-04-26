@@ -3,13 +3,11 @@
 error_reporting(-1);
 /* BEGIN boilerplate code required for every PIeRCe usage. */
 require 'vendor/autoload.php';
-$dice = new \Dice\Dice(true);
+$dice = new \Dice\Dice();
 $dice->addRule('Pierce\Client', new \Dice\Rule(['shared' => true]));
 $dice->addRule('Noair\Noair', new \Dice\Rule(['shared' => true]));
 $dice->addRule('Noair\Listener',
-    new \Dice\Rule([
-        'call' => [['subscribe', [$dice->create('Noair\Noair')]]]
-    ])
+    new \Dice\Rule(['call' => [['subscribe', [$dice->create('Noair\Noair')]]] ])
 );
 $dice->addRule('Monolog\Logger',
     new \Dice\Rule(['constructParams' => ['pierce']])
@@ -72,7 +70,7 @@ $client = $dice
         'servers'     => ['chat.freenode.net:6667'],
         'nick'        => 'PIeRCe',
         'channels'    => ['#pierce-test'],
-        // 'type'        => 'Ircu',
+        'type'        => $dice->create('Pierce\Numerics\NumericsFactory', ['Ircu']),
         // 'bindto'      => '0.0.0.0:0',
         // 'password'    => '',
         // 'usermode'    => 0,

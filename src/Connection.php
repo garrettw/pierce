@@ -34,7 +34,7 @@ class Connection extends \Noair\Listener
     private $messagequeue;
     private $sendrate  = 4; // in Hz -- should be <= Client::$pollrate
 
-    public function __construct(array $set = [], \Dice\Dice $dice)
+    public function __construct(array $set = [])
     {
         foreach ($set as $prop => $val):
             if ($prop == 'nick' || $prop == 'username'):
@@ -52,24 +52,7 @@ class Connection extends \Noair\Listener
             $this->autoretrymax = 1;
         endif;
 
-        if (!isset($this->type)):
-            $map = [
-                'quakenet' => 'Asuka',
-                'austnet' => 'AustHex',
-                'dalnet' => 'Bahamut',
-                'ircnet' => 'IRCnet',
-                'freenode' => 'Ircu',
-                'undernet' => 'Ircu',
-            ];
-            $lowername = strtolower($this->name);
-
-            if (isset($map[$lowername])):
-                $this->type = $map[$lowername];
-            else:
-                $this->type = 'RFC';
-            endif;
-        endif;
-        $this->type = $dice->create('Pierce\\Numerics\\' . $this->type);
+        $this->type = $this->type->create();
 
         $this->messagequeue = [
             Message::HIGH => $this->perform, Message::NORMAL => [], Message::LOW => [],
