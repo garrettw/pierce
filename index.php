@@ -4,14 +4,14 @@ error_reporting(-1);
 /* BEGIN boilerplate code required for every PIeRCe usage. */
 require 'vendor/autoload.php';
 $dice = new \Dice\Dice(true);
-$dice->addRule('Pierce\\Client', new \Dice\Rule(['shared' => true]));
-$dice->addRule('Noair\\Noair', new \Dice\Rule(['shared' => true]));
-$dice->addRule('Noair\\Listener',
+$dice->addRule('Pierce\Client', new \Dice\Rule(['shared' => true]));
+$dice->addRule('Noair\Noair', new \Dice\Rule(['shared' => true]));
+$dice->addRule('Noair\Listener',
     new \Dice\Rule([
-        'call' => [['subscribe', [$dice->create('Noair\\Noair')]]]
+        'call' => [['subscribe', [$dice->create('Noair\Noair')]]]
     ])
 );
-$dice->addRule('Monolog\\Logger',
+$dice->addRule('Monolog\Logger',
     new \Dice\Rule(['constructParams' => ['pierce']])
 );
 /* END boilerplate */
@@ -61,13 +61,13 @@ class MyBot extends Noair\Listener
 // events rather than the raw data events coming from the connections.
 
 $client = $dice
-    ->create('Pierce\\Client', [[
+    ->create('Pierce\Client', [[
         'realname' => 'PIeRCe bot',
         // 'username' => 'pierce',
     ]])
-    ->addBot([$dice->create('Pierce\\Logger'), $dice->create('Pierce\\StdEvents')])
+    ->addBot([$dice->create('Pierce\Logger'), $dice->create('Pierce\StdEvents')])
     ->addBot($dice->create('MyBot'))
-    ->addConnection($dice->create('Pierce\\Connection', [[
+    ->addConnection($dice->create('Pierce\Connection', [[
         'name'        => 'freenode',
         'servers'     => ['chat.freenode.net:6667'],
         'nick'        => 'PIeRCe',
