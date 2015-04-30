@@ -60,6 +60,8 @@ class RFC
     const RPL_TRACELOG = '261';
     const RPL_TRACEEND = '262';
     const RPL_TRYAGAIN = '263';
+    const RPL_LOCALUSERS = '265';
+    const RPL_GLOBALUSERS = '266';
     const RPL_VCHANEXIST = '276';
     const RPL_VCHANLIST = '277';
     const RPL_VCHANHELP = '278';

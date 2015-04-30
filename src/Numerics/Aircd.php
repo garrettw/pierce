@@ -7,8 +7,6 @@ class Aircd extends RFC
     // New numerics
     const RPL_ATTEMPTINGJUNC = '050';
     const RPL_ATTEMPTINGREROUTE = '051';
-    const RPL_LOCALUSERS = '265';
-    const RPL_GLOBALUSERS = '266';
     const RPL_START_NETSTAT = '267';
     const RPL_NETSTAT = '268';
     const RPL_END_NETSTAT = '269';

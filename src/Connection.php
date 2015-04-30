@@ -11,14 +11,14 @@ class Connection extends \Noair\Listener
     private $name;
     private $type;
     private $servers = [];
-    private $bindto;
+    private $bindto = '';
     private $nick = '';
     private $username = '';
     private $realname = '';
     private $password = '';
     private $perform = [];
     private $motd = [];
-    private $usermode;
+    private $usermode = 0;
     private $channels = [];
     private $users = [];
     private $autoretry = false;
@@ -44,15 +44,13 @@ class Connection extends \Noair\Listener
             endif;
         endforeach;
 
-        if (!$this->username):
-            $this->username = str_replace(' ', '', exec('whoami'));
-        endif;
-
         if (!$this->autoretry):
             $this->autoretrymax = 1;
         endif;
 
-        $this->type = $this->type->create();
+        if ($this->type instanceof \Pierce\Numerics\NumericsFactory):
+            $this->type = $this->type->create();
+        endif;
 
         $this->messagequeue = [
             Message::HIGH => $this->perform, Message::NORMAL => [], Message::LOW => [],
@@ -71,9 +69,11 @@ class Connection extends \Noair\Listener
             case 'username':
                 $val = str_replace(' ', '', $val);
             case 'realname':
-                if ($this->connected && $this->$name != $val):
-                    $this->noair->publish(new Event('connectionPropertyChange',
-                        [$name, $val], $this));
+                if ($this->$name != $val):
+                    if ($this->connected):
+                        $this->noair->publish(new Event('connectionPropertyChange',
+                            [$name, $val], $this));
+                    endif;
                     $this->$name = $val;
                 endif;
             case 'name':
@@ -107,7 +107,10 @@ class Connection extends \Noair\Listener
 
         // check the socket to see if data is waiting for us
         // this will trigger a warning when a signal is received
-        $result = stream_select($r = [$this->sock], $w = null, $e = null, 0);
+        $r = [$this->sock];
+        $w = null;
+        $e = null;
+        $result = stream_select($r, $w, $e, 0);
         $rawmsg = null;
 
         if ($result):
@@ -132,9 +135,14 @@ class Connection extends \Noair\Listener
 
         if (!empty($rawmsg)):
             // received data, so hand each msg off to StdEvents
-            $this->lastrx = $time;
+            $this->lastrx = time();
             $this->noair->publish(new Event('received', new Message($rawmsg), $this));
         endif;
+    }
+
+    public function motd($text)
+    {
+        $thid->motd[] = $text;
     }
 
     public function onClientPropertyChange(Event $e)
@@ -173,15 +181,10 @@ class Connection extends \Noair\Listener
                     is_numeric($this->usermode) or $this->usermode = 0;
 
                     $this->password and $this->sendNow("PASS {$this->password}");
-                    $this->sendNow("NICK {$this->nick}");
                     $this->sendNow("USER {$this->username} {$this->usermode} * :{$this->realname}");
-
-                    if ($this->channels):
-                        $this->noair->publish(new Event('join', $this->channels, $this));
-                    endif;
+                    $this->sendNow("NICK {$this->nick}");
 
                     $this->updateState();
-                    $this->noair->publish(new Event('connected', $this->name, $this));
                     return $this;
                 endif;
 
@@ -197,11 +200,9 @@ class Connection extends \Noair\Listener
 
     public function onConnectionError(Event $e)
     {
-        if ($e->data != $this->name):
-            return;
+        if ($e->data == $this->name):
+            return $this->noair->publish(new Event('reconnect', $this->name, $this));
         endif;
-
-        return $this->noair->publish(new Event('reconnect', $this->name, $this));
     }
 
     public function onDisconnect(Event $e)

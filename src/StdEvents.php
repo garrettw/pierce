@@ -9,10 +9,10 @@ class StdEvents extends \Noair\Listener
 {
     private $rxtimeout;
 
-    public function __construct(Client $client)
+    public function __construct($rxt)
     {
         $this->defaultPriority = \Noair\Noair::PRIORITY_HIGHEST;
-        $this->rxtimeout = $client->rxtimeout;
+        $this->rxtimeout = $rxt;
         $this->handlers = [
             ['timer:' . ($this->rxtimeout / 8), [$this, 'pingCheck']],
         ];
@@ -32,7 +32,7 @@ class StdEvents extends \Noair\Listener
         elseif ($conn->lastrx + $this->rxtimeout/2 < $time):
             $this->noair->publish(new RawSendEvent([
                 'connection' => $conn->name,
-                'message' => 'PING ' . $conn->address,
+                'message' => 'PING ' . $conn->remoteaddr,
                 'priority' => Message::URGENT,
             ], $this));
         endif;
@@ -42,6 +42,12 @@ class StdEvents extends \Noair\Listener
     {
         switch ($e->data[0]):
             case 'nick':
+                $this->noair->publish(new RawSendEvent([
+                    'connection' => $e->caller->name,
+                    'message' => 'NICK ' . $e->data[1],
+                    'priority' => Message::URGENT,
+                ], $this));
+                break;
 
             case 'username':
 
@@ -87,6 +93,13 @@ class StdEvents extends \Noair\Listener
 
     }
 
+    public function onConnected(Event $e)
+    {
+        if ($e->caller->channels):
+            $this->noair->publish(new Event('join', $e->caller->channels, $e->caller));
+        endif;
+    }
+
     public function onCtcp(Event $e)
     {
 
@@ -99,8 +112,17 @@ class StdEvents extends \Noair\Listener
 
     public function onErrNicknameinuse(Event $e)
     {
-        $newnick = substr($e->caller->nick, 0, 5) . rand(0, 999);
-        // TODO: send $newnick to server
+        $e->caller->nick = substr($e->caller->nick, 0, 5) . rand(0, 999);
+    }
+
+    public function onErrNomotd(Event $e)
+    {
+        $this->noair->publish(new Event('connected', $e->caller->name, $e->caller));
+    }
+
+    public function onErrNoopermotd(Event $e)
+    {
+        $this->noair->publish(new Event('connected', $e->caller->name, $e->caller));
     }
 
     public function onJoin(Event $e)
@@ -166,17 +188,28 @@ class StdEvents extends \Noair\Listener
 
     public function onRplMotdstart(Event $e)
     {
-        $e->caller->motd[] = $e->data->body;
+        $e->caller->motd($e->data->body);
     }
 
     public function onRplMotd(Event $e)
     {
-        $e->caller->motd[] = $e->data->body;
+        $e->caller->motd($e->data->body);
     }
 
     public function onRplEndofmotd(Event $e)
     {
-        $e->caller->motd[] = $e->data->body;
+        $e->caller->motd($e->data->body);
+        $this->noair->publish(new Event('connected', $e->caller->name, $e->caller));
+    }
+
+    public function onRplOmotdend(Event $e)
+    {
+        $this->noair->publish(new Event('connected', $e->caller->name, $e->caller));
+    }
+
+    public function onRplEndofo(Event $e)
+    {
+        $this->noair->publish(new Event('connected', $e->caller->name, $e->caller));
     }
 
     public function onRplUmodeis(Event $e)

@@ -11,8 +11,6 @@ class Hybrid extends RFC
     const RPL_STATSDLINE = '225';
     const RPL_STATSULINE = '246';
     const RPL_STATSDEBUG = '249';
-    const RPL_LOCALUSERS = '265';
-    const RPL_GLOBALUSERS = '266';
     const RPL_NOTOPERANYMORE = '385';
     const ERR_BADCHANNAME = '479';
     const ERR_GHOSTEDCLIENT = '503';

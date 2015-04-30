@@ -14,9 +14,9 @@ class Client extends \Noair\Listener
     private $pollrate    = 10; // in Hz
     private $rxtimeout   = 300;
 
-    private $nick;
-    private $username;
-    private $realname;
+    private $nick = '';
+    private $username = '';
+    private $realname = '';
 
     public function __construct($set = [])
     {
@@ -27,6 +27,10 @@ class Client extends \Noair\Listener
                 $this->$prop = $val;
             endif;
         endforeach;
+
+        if (!$this->username):
+            $this->username = str_replace(' ', '', exec('whoami'));
+        endif;
     }
 
     public function __get($name)

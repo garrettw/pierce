@@ -11,8 +11,6 @@ class Bahamut extends RFC
     const RPL_STATSZLINE = '225';
     const RPL_STATSCOUNT = '226';
     const RPL_STATSGLINE = '227';
-    const RPL_LOCALUSERS = '265';
-    const RPL_GLOBALUSERS = '266';
     const RPL_WHOISADMIN = '308';
     const RPL_WHOISSADMIN = '309';
     const RPL_WHOISSVCMSG = '310';

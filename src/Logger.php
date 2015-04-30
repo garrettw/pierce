@@ -15,6 +15,10 @@ class Logger extends \Noair\Listener
 
     public function log(Event $e)
     {
-
+        if ($e->name != 'timer'):
+            echo $e->name . "\n";
+            print_r($e->data);
+            echo "\n";
+        endif;
     }
 }
