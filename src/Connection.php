@@ -1,10 +1,9 @@
 <?php
 
 namespace Pierce;
-use Noair\Event,
-    Pierce\Event\RawSendEvent,
+use Pierce\Connection\Channel,
     Pierce\Connection\Message,
-    Pierce\Exception as PException;
+    Pierce\Connection\User;
 
 class Connection extends \Noair\Listener
 {
@@ -33,9 +32,12 @@ class Connection extends \Noair\Listener
     private $lasttxmsg = 0; // in milliseconds
     private $messagequeue;
     private $sendrate  = 4; // in Hz -- should be <= Client::$pollrate
+    private $ef;
 
-    public function __construct(array $set = [])
+    public function __construct(Event\Factory $efactory, array $set = [])
     {
+        $this->ef = $efactory;
+
         foreach ($set as $prop => $val):
             if ($prop == 'nick' || $prop == 'username'):
                 $this->$prop = str_replace(' ', '', $val);
@@ -48,9 +50,7 @@ class Connection extends \Noair\Listener
             $this->autoretrymax = 1;
         endif;
 
-        if ($this->type instanceof \Pierce\Numerics\NumericsFactory):
-            $this->type = $this->type->create();
-        endif;
+        $this->type = $this->type->create();
 
         $this->messagequeue = [
             Message::HIGH => $this->perform, Message::NORMAL => [], Message::LOW => [],
@@ -71,8 +71,9 @@ class Connection extends \Noair\Listener
             case 'realname':
                 if ($this->$name != $val):
                     if ($this->connected):
-                        $this->noair->publish(new Event('connectionPropertyChange',
-                            [$name, $val], $this));
+                        $this->noair->publish(
+                            $this->ef->create('connectionPropertyChange', [$name, $val], $this)
+                        );
                     endif;
                     $this->$name = $val;
                 endif;
@@ -86,6 +87,40 @@ class Connection extends \Noair\Listener
             default:
                 $this->$name = $val;
         endswitch;
+    }
+
+    public function addChannel(Channel $chan)
+    {
+        $this->channels[$chan->name] = $chan;
+        return $this;
+    }
+
+    public function channel($name)
+    {
+        return $this->channels[$name];
+    }
+
+    public function removeChannel($name)
+    {
+        unset($this->channels[$name]);
+        return $this;
+    }
+
+    public function addUser(User $user)
+    {
+        $this->users[$user->nick] = $user;
+        return $this;
+    }
+
+    public function user($nick)
+    {
+        return $this->users[$nick];
+    }
+
+    public function removeUser($nick)
+    {
+        unset($this->users[$nick]);
+        return $this;
     }
 
     public function listenOnce()
@@ -127,25 +162,29 @@ class Connection extends \Noair\Listener
         elseif ($result === false):
             // panic! something went wrong! maybe received a signal.
             // not sure what to do here yet.
-            throw new PException($this->noair, 'stream_select error');
+            throw new Exception($this->noair, 'stream_select error');
         endif;
         // no data on the socket
 
-        $this->noair->publish(new Event('timer', $rawmsg, $this));
+        $this->noair->publish($this->ef->create('timer', $rawmsg, $this));
 
         if (!empty($rawmsg)):
             // received data, so hand each msg off to StdEvents
             $this->lastrx = time();
-            $this->noair->publish(new Event('received', new Message($rawmsg), $this));
+            $this->noair->publish(
+                $this->ef->create('received', new Message($rawmsg), $this)
+            );
         endif;
+
+        return true;
     }
 
     public function motd($text)
     {
-        $thid->motd[] = $text;
+        $this->motd[] = $text;
     }
 
-    public function onClientPropertyChange(Event $e)
+    public function onClientPropertyChange(\Noair\Event $e)
     {
         $prop = $e->data[0];
         if ($this->$prop == $e->caller->$prop):
@@ -153,13 +192,14 @@ class Connection extends \Noair\Listener
         endif;
     }
 
-    public function onConnect(Event $e)
+    public function onConnect(\Noair\Event $e)
     {
         if ($e->data != $this->name):
             return;
         endif;
 
         if ($this->connected || !$this->subscribed):
+            // either we're connected already, or not subscribed so can't do anything
             return $this;
         endif;
 
@@ -189,7 +229,7 @@ class Connection extends \Noair\Listener
                 endif;
 
                 $faildata = [$this->name, $errno, $errstr];
-                $this->noair->publish(new Event('connectFailed', $faildata, $this));
+                $this->noair->publish($this->ef->create('connectFailed', $faildata, $this));
             endforeach;
         endfor;
 
@@ -198,65 +238,65 @@ class Connection extends \Noair\Listener
             "Unable to connect to any server for connection '{$this->name}'");
     }
 
-    public function onConnectionError(Event $e)
+    public function onConnectionError(\Noair\Event $e)
     {
         if ($e->data == $this->name):
-            return $this->noair->publish(new Event('reconnect', $this->name, $this));
+            return $this->noair->publish(
+                $this->ef->create('reconnect', $this->name, $this)
+            );
         endif;
     }
 
-    public function onDisconnect(Event $e)
+    public function onDisconnect(\Noair\Event $e)
     {
         if ($e->data != $this->name):
             return;
         endif;
 
         fclose($this->sock);
-        $this->noair->publish(new Event('disconnected', $this->name, $this));
+        $this->noair->publish($this->ef->create('disconnected', $this->name, $this));
         $this->updateState();
         return $this->unsubscribe();
     }
 
     public function onReconnect(Event $e)
     {
-        if ($e->data != $this->name):
-            return;
+        if ($e->data == $this->name):
+            $this->connected = false;
+            // reset stream/socket stuff
+            return $this->onConnect($e);
         endif;
-
-        $this->connected = false;
-        // reset stream/socket stuff
-        return $this->onConnect($e);
     }
 
-    public function onRawSend(RawSendEvent $rse)
+    public function onRawSend(Event\RawSendEvent $rse)
     {
-        if ($rse->data['connection'] != $this->name):
-            return;
-        endif;
-
-        if ($rse->data['priority'] == Message::URGENT):
-            $this->sendNow($rse->data['message']);
-        else:
-            $this->messagequeue[$rse->data['priority']][] = $rse->data['message'];
+        if ($rse->data['connection'] == $this->name):
+            if ($rse->data['priority'] == Message::URGENT):
+                return $this->sendNow($rse->data['message']);
+            else:
+                $this->messagequeue[$rse->data['priority']][] = $rse->data['message'];
+            endif;
         endif;
     }
 
-    public function onRxTimeout(Event $e)
+    public function onRxTimeout(\Noair\Event $e)
     {
         if ($e->data == $this->name):
-            return $this->noair->publish(new Event('connectionError', $this->name, $this));
+            return $this->noair->publish(
+                $this->ef->create('connectionError', $this->name, $this)
+            );
         endif;
     }
 
     private function sendNow($message)
     {
         if (($result = fwrite($this->sock, $message . "\r\n")) !== false):
-            $this->noair->publish(new Event('sent', $message, $this));
+            $this->noair->publish($this->ef->create('sent', $message, $this));
             $this->lasttx = self::currentTimeMillis();
             return true;
         endif;
 
-        $this->noair->publish(new Event('connectionError', $this->name, $this));
+        $this->noair->publish($this->ef->create('connectionError', $this->name, $this));
         return false;
     }
 

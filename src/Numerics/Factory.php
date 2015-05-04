@@ -2,7 +2,7 @@
 
 namespace Pierce\Numerics;
 
-class NumericsFactory
+class Factory implements \Pierce\FactoryInterface
 {
     private $type;
 

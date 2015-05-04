@@ -12,7 +12,9 @@ $dice->addRule('Monolog\Logger', ['constructParams' => ['pierce']]);
 /* END boilerplate */
 
 /* BEGIN custom bot code */
-use Noair\Event;
+use Pierce\Event\SendEvent,
+    Pierce\Connection\Message,
+    Noair\Event;
 class MyBot extends Noair\Listener
 {
     public function __construct()
@@ -25,10 +27,11 @@ class MyBot extends Noair\Listener
     public function sampleEventHandler(Event $e)
     {
         // do something, like send a message
-        $this->noair->publish(new Event('privmsg', [
+        $this->noair->publish(new SendEvent('privmsg', [
             'connection' => 'freenode',
-            'channel' => '#pierce-test',
+            'target' => '#pierce-test',
             'message' => 'hi there',
+            'priority' => Message::NORMAL,
         ], $this));
     }
 
@@ -39,10 +42,11 @@ class MyBot extends Noair\Listener
 
     public function sampleTimedEvent(Event $e)
     {
-        $this->noair->publish(new Event('privmsg', [
+        $this->noair->publish(new SendEvent('privmsg', [
             'connection' => 'freenode',
-            'channel' => '#pierce-test',
+            'target' => '#pierce-test',
             'message' => 'hi there (timed)',
+            'priority' => Message::NORMAL,
         ], $this));
     }
 }
@@ -67,7 +71,7 @@ $client->addBot($dice->create('Pierce\Logger'))
     ->addConnection($dice->create('Pierce\Connection', [[
         'name'        => 'freenode',
         'servers'     => ['chat.freenode.net:6667'],
-        'type'        => $dice->create('Pierce\Numerics\NumericsFactory', ['Ircu']),
+        'type'        => $dice->create('Pierce\Numerics\Factory', ['Ircu']),
         'channels'    => ['#pierce-test'],
         // 'bindto'      => '0.0.0.0:0',
         // 'password'    => '',

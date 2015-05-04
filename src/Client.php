@@ -1,7 +1,6 @@
 <?php
 
 namespace Pierce;
-use Noair\Event;
 
 class Client extends \Noair\Listener
 {
@@ -13,13 +12,17 @@ class Client extends \Noair\Listener
     private $interrupt   = false;
     private $pollrate    = 10; // in Hz
     private $rxtimeout   = 300;
+    private $ef;
 
     private $nick = '';
     private $username = '';
     private $realname = '';
+    private $version = '';
 
-    public function __construct($set = [])
+    public function __construct(Event\Factory $efactory, $set = [])
     {
+        $this->ef = $efactory;
+
         foreach ($set as $prop => $val):
             if ($prop == 'nick' || $prop == 'username'):
                 $this->$prop = str_replace(' ', '', $val);
@@ -48,7 +51,9 @@ class Client extends \Noair\Listener
                 // intentional fallthrough
             case 'realname':
                 if ($this->$name && $this->$name != $val):
-                    $this->noair->publish(new Event('clientPropertyChange', [$name, $val], $this));
+                    $this->noair->publish(
+                        $this->ef->create('clientPropertyChange', [$name, $val], $this)
+                    );
                     $this->$name = $val;
                 endif;
                 // intentional fallthrough
@@ -72,7 +77,7 @@ class Client extends \Noair\Listener
         $this->connections[$conn->name] = $conn;
 
         if ($connectnow == self::CONNECTNOW):
-            $this->noair->publish(new Event('connect', $conn->name, $this));
+            $this->noair->publish($this->ef->create('connect', $conn->name, $this));
         endif;
 
         return $this;
@@ -94,7 +99,7 @@ class Client extends \Noair\Listener
     {
         foreach ($this->connections as $conn):
             if (!$conn->connected):
-                $this->noair->publish(new Event('connect', $conn->name, $this));
+                $this->noair->publish($this->ef->create('connect', $conn->name, $this));
             endif;
         endforeach;
 
@@ -103,8 +108,7 @@ class Client extends \Noair\Listener
 
     public function listen()
     {
-        while (!$this->interrupt && count($this->connections)):
-            $this->listenOnce();
+        while ($this->listenOnce() && count($this->connections)):
             usleep((int) ((1 / $this->pollrate) * 1000000));
         endwhile;
 
@@ -114,13 +118,16 @@ class Client extends \Noair\Listener
     public function listenOnce($name = null)
     {
         foreach ($this->connections as $conn):
-            if (!$this->interrupt && (!isset($name) || $conn->name == $name)):
+            if ($this->interrupt):
+                return false;
+            elseif (!isset($name) || $conn->name == $name):
                 $conn->listenOnce();
             endif;
         endforeach;
+        return true;
     }
 
-    public function onDisconnected(Event $e)
+    public function onDisconnected(\Noair\Event $e)
     {
         unset($this->connections[$e->caller->name]);
     }

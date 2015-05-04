@@ -94,6 +94,7 @@ class RFC
     const RPL_UNIQOPIS = '325';
     const RPL_NOCHANPASS = '326';
     const RPL_CHPASSUNKNOWN = '327';
+    const RPL_CREATIONTIME = '329';
     const RPL_WHOWAS_TIME = '330';
     const RPL_NOTOPIC = '331';
     const RPL_TOPIC = '332';

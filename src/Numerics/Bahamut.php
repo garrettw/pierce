@@ -15,7 +15,6 @@ class Bahamut extends RFC
     const RPL_WHOISSADMIN = '309';
     const RPL_WHOISSVCMSG = '310';
     const RPL_CHANNEL_URL = '328';
-    const RPL_CREATIONTIME = '329';
     const RPL_COMMANDSYNTAX = '334';
     const ERR_BANONCHAN = '435';
     const ERR_SERVICESDOWN = '440';

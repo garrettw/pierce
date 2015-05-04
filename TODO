@@ -1,0 +1,3 @@
+decouple classes from other classes (remember this is why we use dice)
+Connection: uses Message constants, Exception, Message
+StdEvents: uses Noair/Message constants, Channel, User

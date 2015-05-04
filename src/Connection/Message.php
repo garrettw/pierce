@@ -12,7 +12,7 @@ class Message
     private $raw;
     private $src = '';
     private $srcNick = '';
-    private $srcIdent = '';
+    private $srcUser = '';
     private $srcHost = '';
     private $cmd;
     private $params = [];
@@ -29,9 +29,9 @@ class Message
             $this->src = substr($rawmsg, 1, $prefixEnd - 1);
             // parse ident thingy
             if (preg_match('/^(\S+)!(\S+)@(\S+)$/', $this->src, $matches)):
-                $this->srcNick  = $matches[1];
-                $this->srcIdent = $matches[2];
-                $this->srcHost  = $matches[3];
+                $this->srcNick = $matches[1];
+                $this->srcUser = $matches[2];
+                $this->srcHost = $matches[3];
             else:
                 $this->srcHost = $this->src;
             endif;
@@ -57,8 +57,10 @@ class Message
                 if ($this->body{0} == chr(1)):
                     if (preg_match("/^\1ACTION .*\1\$/", $this->body)):
                         $this->cmd .= '_ACTION';
+                        $this->body = substr($this->body, 1, -1);
                     elseif (preg_match("/^\1.*\1\$/", $this->body)):
                         $this->cmd = 'CTCP';
+                        $this->body = substr($this->body, 1, -1);
                     endif;
                 endif;
             elseif ($this->cmd == 'NOTICE'):
@@ -66,6 +68,7 @@ class Message
                     $this->cmd = 'CHANNOTICE';
                 elseif (preg_match("/^\1.*\1\$/", $this->body)):
                     $this->cmd = 'CTCP_REPLY';
+                    $this->body = substr($this->body, 1, -1);
                 endif;
             endif;
         endif;
