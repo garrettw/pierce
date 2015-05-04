@@ -21,7 +21,7 @@ class User
     public function __get($name)
     {
         if ($name == 'ident'):
-            return $nick . '!' . $user . '@' . $host;
+            return $nick . '!' . $username . '@' . $host;
         endif;
     }
 }
