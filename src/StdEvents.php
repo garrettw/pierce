@@ -250,8 +250,9 @@ class StdEvents extends \Noair\Listener
 
     public function onRplWelcome(Event $e)
     {
-        // Figure out how to do this without telling the server our nick again!
-        // $e->caller->nick = $e->data->params[0];
+        $this->noair->publish(
+            $this->ef->create('newNickFromServer', $e->data->params[0], $e->caller)
+        );
     }
 
     public function onRplBounce(Event $e)

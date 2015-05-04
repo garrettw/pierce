@@ -259,7 +259,15 @@ class Connection extends \Noair\Listener
         return $this->unsubscribe();
     }
 
-    public function onReconnect(Event $e)
+    public function onNewNickFromServer(\Noair\Event $e)
+    {
+        if ($e->caller->name == $this->name):
+            $this->nick = $e->data;
+            // more may be needed here, like to update our User object and such
+        endif;
+    }
+
+    public function onReconnect(\Noair\Event $e)
     {
         if ($e->data == $this->name):
             $this->connected = false;
